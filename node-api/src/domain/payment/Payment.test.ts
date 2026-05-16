@@ -40,15 +40,11 @@ describe('Payment', () => {
       baseProps.now,
     );
 
+    expect(() => approved.markRejected('Declined', baseProps.now)).toThrow(
+      IllegalStateTransitionError,
+    );
     expect(() =>
-      approved.markRejected('Declined', baseProps.now),
-    ).toThrow(IllegalStateTransitionError);
-    expect(() =>
-      approved.markApproved(
-        '55555555-5555-4555-8555-555555555555',
-        'Again',
-        baseProps.now,
-      ),
+      approved.markApproved('55555555-5555-4555-8555-555555555555', 'Again', baseProps.now),
     ).toThrow(IllegalStateTransitionError);
   });
 
