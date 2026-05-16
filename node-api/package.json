@@ -17,7 +17,7 @@
     "test:unit": "jest --config jest.config.cjs --selectProjects=unit",
     "test:domain": "jest --config jest.domain.config.cjs --selectProjects=unit --testPathPattern=src/domain --coverage",
     "test:application": "jest --config jest.application.config.cjs --selectProjects=unit --testPathPattern=src/application --coverage",
-    "test:integration": "jest --config jest.config.cjs --selectProjects=integration --runInBand",
+    "test:integration": "jest --config jest.infrastructure.config.cjs --selectProjects=integration --runInBand --coverage",
     "test:e2e": "jest --config jest.config.cjs --selectProjects=e2e --runInBand",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",

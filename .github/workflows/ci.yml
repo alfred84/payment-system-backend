@@ -87,6 +87,7 @@ jobs:
       - run: npx prisma generate
       - run: npx prisma migrate deploy
       - run: npm run test:unit -- --passWithNoTests
+      - run: npm run test:integration
       - run: npm run test:e2e -- --passWithNoTests
 
   test-python:
