@@ -36,9 +36,9 @@ root_packages = ["app"]
 name = "Clean Architecture layers"
 type = "layers"
 layers = [
-  "app.interfaces",
-  "app.application",
-  "app.infrastructure",
-  "app.domain",
+  "interfaces",
+  "application",
+  "infrastructure",
+  "domain",
 ]
 containers = ["app"]
