@@ -1,0 +1,32 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Cursor IDE
+.cursor/
+
+# Plan y contexto (no van al repo)
+PLAN.md
+PROJECT_REQUIREMENTS.md
+
+# Node
+node_modules/
+dist/
+coverage/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.pytest_cache/
+htmlcov/
+
+# Docker
+*.env.docker
+
+# OS
+.DS_Store
+Thumbs.db
