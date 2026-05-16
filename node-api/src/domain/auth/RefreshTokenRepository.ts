@@ -21,6 +21,14 @@ export interface RefreshTokenRepository {
   findActiveByUserId(userId: string): Promise<RefreshToken[]>;
 
   /**
+   * List all refresh tokens for a user (active and revoked).
+   *
+   * @param userId - Owner user UUID.
+   * @returns All refresh token rows for reuse detection.
+   */
+  findAllByUserId(userId: string): Promise<RefreshToken[]>;
+
+  /**
    * Persist a new refresh token.
    *
    * @param token - Refresh token entity.
