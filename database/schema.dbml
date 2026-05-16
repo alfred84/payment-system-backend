@@ -1,0 +1,9 @@
+// Human-readable schema reference — authoritative source is node-api/prisma/schema.prisma
+// Regenerate this file when the Prisma schema changes (Phase 3+).
+
+Project payment_system {
+  database_type: 'PostgreSQL'
+  Note: 'Payment System Backend — reference diagram'
+}
+
+// Tables will be documented here after Phase 3 migrations.
