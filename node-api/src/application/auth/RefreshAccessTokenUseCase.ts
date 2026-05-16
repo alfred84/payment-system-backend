@@ -78,8 +78,8 @@ export class RefreshAccessTokenUseCase {
     });
     const rotated = match.markReplacedBy(newTokenId, now);
 
-    await this.refreshTokenRepository.update(rotated);
     await this.refreshTokenRepository.save(replacement);
+    await this.refreshTokenRepository.update(rotated);
 
     return {
       accessToken: this.tokenSigner.signAccessToken({ sub: user.id, email: user.email }),

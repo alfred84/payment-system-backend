@@ -58,6 +58,7 @@ describe('RegisterUserUseCase', () => {
       id: userId,
       fullName: 'Ada Lovelace',
       email: 'ada@example.com',
+      createdAt: now,
     });
   });
 
