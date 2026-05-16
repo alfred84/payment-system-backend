@@ -74,6 +74,22 @@ export default tseslint.config(
     },
   },
   {
+    files: ['src/infrastructure/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/interfaces/**'],
+              message: 'Infrastructure must not import interfaces.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['**/*.test.ts', '**/*.int.test.ts'],
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
