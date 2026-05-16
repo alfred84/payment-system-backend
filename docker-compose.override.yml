@@ -1,0 +1,13 @@
+# Development overrides — bind mounts for hot reload (optional)
+services:
+  node-api:
+    volumes:
+      - ./node-api/src:/app/node-api/src:ro
+    environment:
+      NODE_ENV: development
+
+  python-service:
+    volumes:
+      - ./python-service/app:/app/python-service/app:ro
+    environment:
+      LOG_LEVEL: debug
