@@ -139,6 +139,9 @@ describe('PrismaPaymentRepository (integration)', () => {
 
     const cursorPayment = page[0];
     expect(cursorPayment).toBeDefined();
+    if (!cursorPayment) {
+      throw new Error('Expected a payment in the first pagination page');
+    }
     const nextPage = await paymentRepository.listByUser({
       userId,
       limit: 10,
