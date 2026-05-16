@@ -11,6 +11,7 @@ export interface RegisterUserOutput {
   id: string;
   fullName: string;
   email: string;
+  createdAt: Date;
 }
 
 /**
@@ -60,6 +61,7 @@ export class RegisterUserUseCase {
       id: user.id,
       fullName: user.fullName,
       email,
+      createdAt: user.createdAt,
     };
   }
 }
