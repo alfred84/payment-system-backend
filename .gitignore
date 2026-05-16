@@ -22,6 +22,7 @@ __pycache__/
 *.pyo
 .venv/
 .pytest_cache/
+.coverage
 htmlcov/
 
 # Docker
