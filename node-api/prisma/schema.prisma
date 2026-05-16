@@ -1,5 +1,4 @@
 // Authoritative database schema — migrations in prisma/migrations/
-// Full models added in Phase 3. Phase 0: datasource + client only.
 
 generator client {
   provider = "prisma-client-js"
@@ -8,4 +7,115 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum CardBrand {
+  VISA
+  MASTERCARD
+  AMEX
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// CHECK (email ~* '^[^@\s]+@[^@\s]+\.[^@\s]+$') added in migration SQL.
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  fullName     String   @map("full_name") @db.VarChar(120)
+  email        String   @unique @db.Citext
+  passwordHash String   @map("password_hash")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+
+  cards         Card[]
+  payments      Payment[]
+  refreshTokens RefreshToken[]
+
+  @@index([email], map: "idx_users_email_active")
+  @@map("users")
+}
+
+model RefreshToken {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  tokenHash    String    @map("token_hash")
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz()
+  revoked      Boolean   @default(false)
+  replacedById String?   @map("replaced_by") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz()
+
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacedBy RefreshToken?  @relation("RotationChain", fields: [replacedById], references: [id])
+  replaces   RefreshToken[] @relation("RotationChain")
+
+  @@index([userId], map: "idx_refresh_tokens_user_active")
+  @@index([expiresAt], map: "idx_refresh_tokens_expires")
+  @@map("refresh_tokens")
+}
+
+/// CHECK constraints on last_four_digits, expiry_month, expiry_year in migration SQL.
+model Card {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  cardholderName String    @map("cardholder_name") @db.VarChar(120)
+  lastFourDigits String    @map("last_four_digits") @db.Char(4)
+  brand          CardBrand
+  expiryMonth    Int       @map("expiry_month") @db.SmallInt
+  expiryYear     Int       @map("expiry_year") @db.SmallInt
+  token          String    @unique
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@index([userId], map: "idx_cards_user_active")
+  @@map("cards")
+}
+
+/// CHECK constraints on amount, currency in migration SQL.
+model Payment {
+  id                 String        @id @default(uuid()) @db.Uuid
+  userId             String        @map("user_id") @db.Uuid
+  cardId             String        @map("card_id") @db.Uuid
+  amount             Decimal       @db.Decimal(12, 2)
+  currency           String        @default("USD") @db.Char(3)
+  status             PaymentStatus @default(PENDING)
+  processorReference String?       @map("processor_reference") @db.Uuid
+  processorMessage   String?       @map("processor_message")
+  idempotencyKey     String        @map("idempotency_key") @db.Uuid
+  description        String?       @db.VarChar(255)
+  metadata           Json          @default("{}")
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz()
+
+  user      User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  card      Card              @relation(fields: [cardId], references: [id], onDelete: Restrict)
+  auditLogs PaymentAuditLog[]
+
+  @@unique([userId, idempotencyKey], map: "payments_idem_unique_per_user")
+  @@index([userId, createdAt(sort: Desc)], map: "idx_payments_user_created")
+  @@index([status], map: "idx_payments_status")
+  @@index([userId, idempotencyKey, createdAt], map: "idx_payments_idem_lookup")
+  @@map("payments")
+}
+
+model PaymentAuditLog {
+  id         BigInt         @id @default(autoincrement())
+  paymentId  String         @map("payment_id") @db.Uuid
+  fromStatus PaymentStatus? @map("from_status")
+  toStatus   PaymentStatus  @map("to_status")
+  reason     String?
+  occurredAt DateTime       @default(now()) @map("occurred_at") @db.Timestamptz()
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId, occurredAt], map: "idx_payment_audit_payment")
+  @@map("payment_audit_log")
 }
