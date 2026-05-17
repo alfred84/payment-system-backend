@@ -40,6 +40,13 @@ export function createApp(deps: AppDependencies): Express {
   app.use('/api/v1/auth', createAuthRouter(deps));
   app.use('/api/v1/cards', createCardsRouter(deps));
   app.use('/api/v1/payments', createPaymentsRouter(deps));
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && req.path === '/api/v1/docs') {
+      res.redirect(301, '/api/v1/docs/');
+      return;
+    }
+    next();
+  });
   app.use('/api/v1/docs', createDocsRouter());
 
   app.get('/', (_req, res) => {

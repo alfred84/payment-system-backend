@@ -15,8 +15,7 @@ export function createDocsRouter(): Router {
     res.json(openapiSpec);
   });
 
-  router.use('/', swaggerUi.serve);
-  router.get('/', swaggerUi.setup(openapiSpec, { explorer: true }));
+  router.use('/', swaggerUi.serve, swaggerUi.setup(openapiSpec, { explorer: true }));
 
   return router;
 }
