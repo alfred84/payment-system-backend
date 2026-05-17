@@ -57,6 +57,16 @@ docker compose up --build
 
 Migrations run automatically when the `node-api` container starts (`prisma migrate deploy`).
 
+**After changing Node API or OpenAPI sources while Docker is already running**, rebuild and
+recreate only the API service (the image runs compiled `dist/`, not live TypeScript):
+
+```bash
+docker compose up -d --build node-api
+```
+
+The optional `docker-compose.override.yml` bind-mount of `node-api/src` does **not** hot-reload
+the running API; it is not used by `node dist/main.js` in the container.
+
 | Service          | URL                               |
 |------------------|-----------------------------------|
 | Node API         | http://localhost:3000             |
@@ -79,7 +89,21 @@ Optional: `DATABASE_URL_TEST`, `POSTGRES_*`, `PYTHON_SERVICE_PORT`, `PROCESSOR_A
 
 ### API reference
 
-Interactive OpenAPI 3.0 docs: **http://localhost:3000/api/v1/docs**
+Interactive OpenAPI 3.0 docs: **http://localhost:3000/api/v1/docs/**
+
+| Resource | URL |
+|----------|-----|
+| Swagger UI | http://localhost:3000/api/v1/docs/ |
+| Raw OpenAPI JSON (Postman / codegen) | http://localhost:3000/api/v1/docs/openapi.json |
+
+The spec is generated at **container/process startup** from JSDoc in
+`node-api/src/interfaces/http/openapi/` (`components.ts` + `paths/*.paths.ts`).
+
+**Using Swagger UI**
+
+1. Call `POST /auth/register` or `POST /auth/login` and copy `accessToken`.
+2. Click **Authorize**, enter `Bearer <accessToken>` (or paste the token if the UI adds the prefix).
+3. For `POST /payments`, set header **Idempotency-Key** (UUID v4) in the operation parameters.
 
 All routes use the `/api/v1` prefix.
 
@@ -190,6 +214,8 @@ CI runs lint, tests, Docker builds, and dependency audits on every push to `deve
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | `Environment validation failed` on start | Missing/invalid `.env` | Copy `.env.example`, set `JWT_ACCESS_SECRET` (≥32 chars) |
+| Swagger UI outdated (missing bodies, old paths) | `node-api` image not rebuilt after code changes | `docker compose up -d --build node-api`, then hard-refresh the browser |
+| `Cannot GET /api/v1/docs` | Trailing slash / stale container | Use **/api/v1/docs/** or check `payment-node-api` is healthy |
 | `502 PROCESSOR_UNAVAILABLE` on payments | Python image stale or down | `docker compose build python-service && docker compose up -d python-service` |
 | Integration tests fail to connect DB | `postgres-test` not running | `docker compose up -d postgres-test` |
 | Port 5433 already in use | Another Postgres instance | Change `POSTGRES_TEST_PORT` in `.env` |
@@ -229,6 +255,15 @@ docker compose up --build
 
 Las migraciones se aplican al arrancar el contenedor `node-api`.
 
+Si Docker ya está en marcha y modificaste código Node u OpenAPI, reconstruye solo la API:
+
+```bash
+docker compose up -d --build node-api
+```
+
+El contenedor ejecuta `dist/` compilado; el volumen opcional de `node-api/src` en
+`docker-compose.override.yml` **no** recarga la API en caliente.
+
 | Servicio          | URL                                      |
 |-------------------|------------------------------------------|
 | API Node          | http://localhost:3000                    |
@@ -243,10 +278,19 @@ Consulte [`.env.example`](./.env.example). Obligatorias: `DATABASE_URL`, `JWT_AC
 
 ### Referencia de API
 
-Documentación interactiva OpenAPI: **http://localhost:3000/api/v1/docs**
+Documentación interactiva OpenAPI: **http://localhost:3000/api/v1/docs/**
 
-Prefijo común: `/api/v1`. Autenticación: header `Authorization: Bearer <accessToken>`.
-Pagos: header obligatorio `Idempotency-Key` (UUID v4).
+| Recurso | URL |
+|---------|-----|
+| Swagger UI | http://localhost:3000/api/v1/docs/ |
+| OpenAPI JSON (Postman) | http://localhost:3000/api/v1/docs/openapi.json |
+
+Fuentes del spec: `node-api/src/interfaces/http/openapi/`. Se genera al **arrancar** el proceso.
+
+**Swagger UI:** tras login/registro, use **Authorize** con `Bearer <accessToken>`. En pagos, indique
+`Idempotency-Key` (UUID v4) en los parámetros de la operación.
+
+Prefijo común: `/api/v1`.
 
 ### Ejemplo rápido
 
@@ -281,6 +325,8 @@ cd python-service && pytest --cov=app --cov-fail-under=75
 | Síntoma | Solución |
 |---------|----------|
 | Error de validación de entorno | Revisar `.env` y `JWT_ACCESS_SECRET` |
+| Swagger desactualizado | `docker compose up -d --build node-api` y refrescar el navegador |
+| `Cannot GET /api/v1/docs` | Usar **/api/v1/docs/** o comprobar que `payment-node-api` está healthy |
 | 502 al crear pagos | Reconstruir `python-service`: `docker compose build python-service` |
 | Tests de integración fallan | Levantar `postgres-test`: `docker compose up -d postgres-test` |
 
