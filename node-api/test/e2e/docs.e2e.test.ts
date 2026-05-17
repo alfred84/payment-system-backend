@@ -13,9 +13,20 @@ describe('API docs (e2e)', () => {
     const res = await request.get('/api/v1/docs/openapi.json');
     expect(res.status).toBe(200);
     expect(res.body.openapi).toMatch(/^3\.0/);
-    expect(res.body.paths).toBeDefined();
-    expect(res.body.paths['/auth/register']).toBeDefined();
-    expect(res.body.paths['/cards']).toBeDefined();
-    expect(res.body.paths['/payments']).toBeDefined();
+
+    const requiredPaths = [
+      '/auth/register',
+      '/auth/login',
+      '/auth/refresh',
+      '/auth/logout',
+      '/cards',
+      '/cards/{id}',
+      '/payments',
+      '/payments/{id}',
+    ];
+
+    for (const path of requiredPaths) {
+      expect(res.body.paths[path]).toBeDefined();
+    }
   });
 });

@@ -116,12 +116,10 @@ jobs:
         with:
           node-version: "24"
       - run: cd node-api && npm ci && npm audit --audit-level=high
-        continue-on-error: true
       - uses: actions/setup-python@v5
         with:
           python-version: "3.14"
       - run: pip install pip-audit && cd python-service && pip-audit -r requirements.txt
-        continue-on-error: true
 
   build:
     runs-on: ubuntu-latest
