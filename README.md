@@ -1,10 +1,28 @@
 # payment-system-backend
 
-Fictional payment system demonstrating Clean Architecture, TDD, and idempotent payments using Node.js, FastAPI, and PostgreSQL. **No authentication** — identity is resolved by `userId` (UUID) in the URL, request body, or query parameter.
+Fictional payment system demonstrating Clean Architecture, TDD, and idempotent payments using Node.js, FastAPI, and PostgreSQL.
+
+**No authentication** — identity is resolved by `userId` (UUID) in the URL path, request body, or query parameter (`user_id`).
 
 ---
 
 ## Architecture
+
+```
+                    ┌─────────────────────┐
+                    │   Client / curl     │
+                    └──────────┬──────────┘
+                               │ HTTP
+                    ┌──────────▼──────────┐
+                    │   node-api :3000    │
+                    │  Express + Prisma   │
+                    └──┬──────────────┬───┘
+                       │              │
+              ┌────────▼────┐   ┌─────▼────────────┐
+              │  postgres   │   │ python-service   │
+              │    :5432    │   │  :8000 /process  │
+              └─────────────┘   └──────────────────┘
+```
 
 ```
 payment-system-backend/
@@ -17,20 +35,37 @@ Both services follow Clean Architecture (Domain → Application → Infrastructu
 
 ---
 
+## Technology stack
+
+| Component | Version |
+|-----------|---------|
+| Node.js | ≥ 24 (LTS) |
+| Express | ^5.1.0 |
+| TypeScript | ^5.7.0 |
+| Prisma | ^6.0.0 |
+| PostgreSQL | 18 (Alpine image) |
+| Python | 3.14 |
+| FastAPI | ^0.136.0 |
+| Pydantic | ^2.10.0 |
+
+---
+
 ## Quick start
 
 ```bash
-cp .env.example .env            # fill in values if needed (defaults work locally)
-docker compose up -d            # starts postgres, postgres-test, python-service, node-api
+cp .env.example .env
+docker compose up -d
 curl http://localhost:3000/health
 ```
+
+Interactive API docs: **http://localhost:3000/api/v1/docs**
 
 ---
 
 ## Environment variables
 
 | Variable | Description | Default |
-|---|---|---|
+|----------|-------------|---------|
 | `NODE_ENV` | Runtime environment | `development` |
 | `NODE_API_PORT` | Port for the Node API | `3000` |
 | `DATABASE_URL` | Postgres connection (main) | see `.env.example` |
@@ -43,39 +78,33 @@ curl http://localhost:3000/health
 
 ## API reference (`/api/v1`)
 
-Full interactive docs at **`http://localhost:3000/api/v1/docs`**.
-
 ### Users
 
 | Method | Path | Description |
-|---|---|---|
+|--------|------|-------------|
 | `POST` | `/users` | Create a user (`fullName`, `email`) |
 | `GET` | `/users` | List all users |
 | `GET` | `/users/:id` | Get user by id |
 
 ```bash
-# Create user
 curl -X POST http://localhost:3000/api/v1/users \
   -H 'Content-Type: application/json' \
   -d '{"fullName":"Ada Lovelace","email":"ada@example.com"}'
 
-# List users
 curl http://localhost:3000/api/v1/users
 
-# Get user
 curl http://localhost:3000/api/v1/users/11111111-1111-4111-8111-111111111111
 ```
 
 ### Cards
 
 | Method | Path | Description |
-|---|---|---|
+|--------|------|-------------|
 | `POST` | `/cards` | Register a card (`userId` in body) |
 | `GET` | `/cards?user_id=:id` | List active cards for a user |
 | `DELETE` | `/cards/:id?user_id=:id` | Soft-delete a card |
 
 ```bash
-# Register card (userId in body; PAN and CVV are tokenized and never stored)
 curl -X POST http://localhost:3000/api/v1/cards \
   -H 'Content-Type: application/json' \
   -d '{
@@ -87,24 +116,21 @@ curl -X POST http://localhost:3000/api/v1/cards \
     "cvv":"123"
   }'
 
-# List cards
-curl http://localhost:3000/api/v1/cards?user_id=11111111-1111-4111-8111-111111111111
+curl "http://localhost:3000/api/v1/cards?user_id=11111111-1111-4111-8111-111111111111"
 
-# Soft-delete card
 curl -X DELETE \
-  'http://localhost:3000/api/v1/cards/22222222-2222-4222-8222-222222222222?user_id=11111111-1111-4111-8111-111111111111'
+  "http://localhost:3000/api/v1/cards/22222222-2222-4222-8222-222222222222?user_id=11111111-1111-4111-8111-111111111111"
 ```
 
 ### Payments
 
 | Method | Path | Description |
-|---|---|---|
+|--------|------|-------------|
 | `POST` | `/payments` | Create a payment — requires `Idempotency-Key` header |
 | `GET` | `/payments?user_id=:id` | List payment history (cursor pagination) |
 | `GET` | `/payments/:id?user_id=:id` | Get payment detail |
 
 ```bash
-# Create payment (idempotent)
 curl -X POST http://localhost:3000/api/v1/payments \
   -H 'Content-Type: application/json' \
   -H 'Idempotency-Key: 8f5b3c2a-1d4e-4a9b-9c3d-2e1f0a9b8c7d' \
@@ -116,11 +142,9 @@ curl -X POST http://localhost:3000/api/v1/payments \
     "description":"Monthly subscription"
   }'
 
-# List payments
-curl 'http://localhost:3000/api/v1/payments?user_id=11111111-1111-4111-8111-111111111111&limit=20'
+curl "http://localhost:3000/api/v1/payments?user_id=11111111-1111-4111-8111-111111111111&limit=20"
 
-# Payment detail (user_id validates ownership)
-curl 'http://localhost:3000/api/v1/payments/33333333-3333-4333-8333-333333333333?user_id=11111111-1111-4111-8111-111111111111'
+curl "http://localhost:3000/api/v1/payments/33333333-3333-4333-8333-333333333333?user_id=11111111-1111-4111-8111-111111111111"
 ```
 
 ---
@@ -129,22 +153,16 @@ curl 'http://localhost:3000/api/v1/payments/33333333-3333-4333-8333-333333333333
 
 ```bash
 cd node-api
-
-# Unit tests (domain + application)
 npm run test:unit
-
-# Integration tests (requires running postgres-test container)
-npm run test:integration
-
-# E2E tests (requires full docker-compose stack)
-npm run test:e2e
+npm run test:integration   # requires postgres-test (docker compose)
+npm run test:e2e         # requires full stack
 ```
 
 ---
 
 ## Security
 
-No authentication is required. The following OWASP controls are in place:
+See [SECURITY.md](./SECURITY.md). Summary:
 
 - **Helmet.js** — secure HTTP headers
 - **Rate limiting** — 100 req/IP/15 min
@@ -152,5 +170,101 @@ No authentication is required. The following OWASP controls are in place:
 - **Parameterized queries** — via Prisma (never `$queryRawUnsafe`)
 - **No stack traces** in error responses
 - **PAN & CVV never stored** — only `last4`, `brand`, and an opaque token
-- **Resource ownership** — `card.userId` / `payment.userId` validated on every mutating request
+- **Resource ownership** — `card.userId` / `payment.userId` validated on every request
 - **IDOR-safe 404** — cross-user access returns 404, not 403
+- **No authentication** — deliberate scope limitation (documented in SECURITY.md)
+
+---
+
+# payment-system-backend (Español)
+
+Sistema de pagos ficticio con **Clean Architecture**, **TDD** e idempotencia en cobros.
+
+**Sin autenticación** — el usuario se identifica por `userId` (UUID) en la ruta, el cuerpo o el query `user_id`.
+
+---
+
+## Arquitectura
+
+Ver diagrama ASCII en la sección en inglés. Estructura:
+
+- `node-api/` — API REST principal (Node.js / Express / TypeScript / Prisma)
+- `python-service/` — procesador interno de pagos (Python / FastAPI)
+- `docker-compose.yml` — orquestación local
+
+---
+
+## Arranque rápido
+
+```bash
+cp .env.example .env
+docker compose up -d
+curl http://localhost:3000/health
+```
+
+Documentación interactiva: **http://localhost:3000/api/v1/docs**
+
+---
+
+## Variables de entorno
+
+| Variable | Descripción |
+|----------|-------------|
+| `NODE_ENV` | Entorno de ejecución |
+| `NODE_API_PORT` | Puerto de la API Node (default `3000`) |
+| `DATABASE_URL` | Conexión PostgreSQL principal |
+| `DATABASE_URL_TEST` | Conexión PostgreSQL para tests |
+| `CORS_ORIGINS` | Orígenes CORS permitidos (separados por coma) |
+| `PROCESSOR_URL` | URL del microservicio Python |
+| `LOG_LEVEL` | Nivel de log Winston |
+
+Valores por defecto en `.env.example`.
+
+---
+
+## API (`/api/v1`)
+
+Ningún endpoint requiere `Authorization`.
+
+### Usuarios
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `POST` | `/users` | Crear usuario |
+| `GET` | `/users` | Listar usuarios |
+| `GET` | `/users/:id` | Obtener usuario |
+
+### Tarjetas
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `POST` | `/cards` | Registrar tarjeta (`userId` en body) |
+| `GET` | `/cards?user_id=:id` | Listar tarjetas activas |
+| `DELETE` | `/cards/:id?user_id=:id` | Baja lógica de tarjeta |
+
+### Pagos
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `POST` | `/payments` | Crear pago (header `Idempotency-Key` obligatorio) |
+| `GET` | `/payments?user_id=:id` | Historial paginado |
+| `GET` | `/payments/:id?user_id=:id` | Detalle de pago |
+
+Ejemplos `curl` completos en la sección en inglés.
+
+---
+
+## Pruebas
+
+```bash
+cd node-api
+npm run test:unit
+npm run test:integration
+npm run test:e2e
+```
+
+---
+
+## Seguridad
+
+Ver [SECURITY.md](./SECURITY.md). La API es pública por diseño del enunciado; los controles aplicables son validación de entrada, no almacenar PAN/CVV, idempotencia, rate limiting y validación de pertenencia recurso↔usuario (404 ante acceso cruzado).
