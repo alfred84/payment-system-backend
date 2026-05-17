@@ -6,6 +6,9 @@
   "engines": {
     "node": ">=24.0.0"
   },
+  "overrides": {
+    "tar": "^7.5.11"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
