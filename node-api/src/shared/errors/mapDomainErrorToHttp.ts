@@ -4,9 +4,7 @@ import { HttpError } from './HttpError';
 
 const DOMAIN_CODE_MAP: Record<string, { status: number; code: ErrorCode }> = {
   EMAIL_ALREADY_IN_USE: { status: 409, code: ErrorCode.CONFLICT },
-  INVALID_CREDENTIALS: { status: 401, code: ErrorCode.UNAUTHORIZED },
-  INVALID_REFRESH_TOKEN: { status: 401, code: ErrorCode.UNAUTHORIZED },
-  REFRESH_TOKEN_REUSE: { status: 401, code: ErrorCode.UNAUTHORIZED },
+  USER_NOT_FOUND: { status: 404, code: ErrorCode.NOT_FOUND },
   CARD_NOT_FOUND: { status: 404, code: ErrorCode.NOT_FOUND },
   PAYMENT_NOT_FOUND: { status: 404, code: ErrorCode.NOT_FOUND },
   IDEMPOTENCY_CONFLICT: { status: 409, code: ErrorCode.IDEMPOTENCY_CONFLICT },

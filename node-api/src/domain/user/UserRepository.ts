@@ -22,6 +22,13 @@ export interface UserRepository {
   findById(id: string): Promise<User | null>;
 
   /**
+   * Return all users ordered by creation date descending.
+   *
+   * @returns All user entities.
+   */
+  findAll(): Promise<User[]>;
+
+  /**
    * Persist a new or updated user.
    *
    * @param user - User entity.

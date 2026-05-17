@@ -5,11 +5,11 @@ import helmet from 'helmet';
 import type { HttpContainer } from './types';
 import { createErrorMapper } from './middlewares/errorMapper';
 import { createRequestLogger } from './middlewares/requestLogger';
-import { createAuthRouter } from './routes/auth.routes';
 import { createCardsRouter } from './routes/cards.routes';
 import { createDocsRouter } from './routes/docs.routes';
 import { createHealthRouter } from './routes/health.routes';
 import { createPaymentsRouter } from './routes/payments.routes';
+import { createUsersRouter } from './routes/users.routes';
 import type winston from 'winston';
 
 export interface AppDependencies extends HttpContainer {
@@ -37,7 +37,7 @@ export function createApp(deps: AppDependencies): Express {
 
   app.use(createHealthRouter());
 
-  app.use('/api/v1/auth', createAuthRouter(deps));
+  app.use('/api/v1/users', createUsersRouter(deps));
   app.use('/api/v1/cards', createCardsRouter(deps));
   app.use('/api/v1/payments', createPaymentsRouter(deps));
   app.use((req, res, next) => {

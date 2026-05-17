@@ -24,39 +24,17 @@ enum PaymentStatus {
 
 /// CHECK (email ~* '^[^@\s]+@[^@\s]+\.[^@\s]+$') added in migration SQL.
 model User {
-  id           String   @id @default(uuid()) @db.Uuid
-  fullName     String   @map("full_name") @db.VarChar(120)
-  email        String   @unique @db.Citext
-  passwordHash String   @map("password_hash")
-  isActive     Boolean  @default(true) @map("is_active")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz()
+  id        String   @id @default(uuid()) @db.Uuid
+  fullName  String   @map("full_name") @db.VarChar(120)
+  email     String   @unique @db.Citext
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz()
 
-  cards         Card[]
-  payments      Payment[]
-  refreshTokens RefreshToken[]
+  cards    Card[]
+  payments Payment[]
 
-  @@index([email], map: "idx_users_email_active")
+  @@index([email], map: "idx_users_email")
   @@map("users")
-}
-
-model RefreshToken {
-  id           String    @id @default(uuid()) @db.Uuid
-  userId       String    @map("user_id") @db.Uuid
-  tokenHash    String    @map("token_hash")
-  expiresAt    DateTime  @map("expires_at") @db.Timestamptz()
-  revoked      Boolean   @default(false)
-  replacedById String?   @map("replaced_by") @db.Uuid
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz()
-  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz()
-
-  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  replacedBy RefreshToken?  @relation("RotationChain", fields: [replacedById], references: [id])
-  replaces   RefreshToken[] @relation("RotationChain")
-
-  @@index([userId], map: "idx_refresh_tokens_user_active")
-  @@index([expiresAt], map: "idx_refresh_tokens_expires")
-  @@map("refresh_tokens")
 }
 
 /// CHECK constraints on last_four_digits, expiry_month, expiry_year in migration SQL.

@@ -1,17 +1,8 @@
 /**
- * Shared OpenAPI components (schemas, responses, parameters, examples).
+ * Shared OpenAPI components (schemas, responses, parameters).
  *
  * @openapi
  * components:
- *   securitySchemes:
- *     bearerAuth:
- *       type: http
- *       scheme: bearer
- *       bearerFormat: JWT
- *       description: |
- *         Access token from `POST /auth/login` or `POST /auth/register`.
- *         Send as `Authorization: Bearer <accessToken>`. Expires in **15 minutes**.
- *
  *   parameters:
  *     IdempotencyKeyHeader:
  *       in: header
@@ -25,6 +16,14 @@
  *         type: string
  *         format: uuid
  *       example: 8f5b3c2a-1d4e-4a9b-9c3d-2e1f0a9b8c7d
+ *     UserIdPath:
+ *       in: path
+ *       name: id
+ *       required: true
+ *       schema:
+ *         type: string
+ *         format: uuid
+ *       example: 11111111-1111-4111-8111-111111111111
  *     CardIdPath:
  *       in: path
  *       name: id
@@ -41,6 +40,14 @@
  *         type: string
  *         format: uuid
  *       example: 33333333-3333-4333-8333-333333333333
+ *     UserIdQuery:
+ *       in: query
+ *       name: user_id
+ *       required: true
+ *       schema:
+ *         type: string
+ *         format: uuid
+ *       example: 11111111-1111-4111-8111-111111111111
  *     PaymentsLimitQuery:
  *       in: query
  *       name: limit
@@ -68,7 +75,6 @@
  *       type: string
  *       enum:
  *         - VALIDATION_ERROR
- *         - UNAUTHORIZED
  *         - FORBIDDEN
  *         - NOT_FOUND
  *         - CONFLICT
@@ -104,36 +110,29 @@
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/ValidationDetail'
- *     AuthTokens:
+ *     UserResponse:
  *       type: object
- *       required: [accessToken, refreshToken]
- *       properties:
- *         accessToken:
- *           type: string
- *           description: JWT access token (15 min TTL).
- *           example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
- *         refreshToken:
- *           type: string
- *           description: Opaque rotating refresh token (7 day TTL). Store securely; rotate on each refresh.
- *           example: 11111111-1111-4111-8111-111111111111.8f5b3c2a-1d4e-4a9b-9c3d-2e1f0a9b8c7d
- *     UserSummary:
- *       type: object
- *       required: [id, fullName, email, createdAt]
+ *       required: [id, fullName, email, createdAt, updatedAt]
  *       properties:
  *         id:
  *           type: string
  *           format: uuid
  *         fullName:
  *           type: string
+ *           example: Ada Lovelace
  *         email:
  *           type: string
  *           format: email
+ *           example: ada.lovelace@example.com
  *         createdAt:
  *           type: string
  *           format: date-time
- *     RegisterRequest:
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *     CreateUserRequest:
  *       type: object
- *       required: [fullName, email, password]
+ *       required: [fullName, email]
  *       properties:
  *         fullName:
  *           type: string
@@ -145,61 +144,12 @@
  *           format: email
  *           maxLength: 255
  *           example: ada.lovelace@example.com
- *         password:
- *           type: string
- *           format: password
- *           minLength: 12
- *           description: |
- *             Min 12 chars; at least one uppercase, lowercase, digit, and special character.
- *           example: Str0ng!Passw0rd
- *     RegisterResponse:
- *       allOf:
- *         - $ref: '#/components/schemas/AuthTokens'
- *         - type: object
- *           required: [user]
- *           properties:
- *             user:
- *               $ref: '#/components/schemas/UserSummary'
- *     LoginRequest:
- *       type: object
- *       required: [email, password]
- *       properties:
- *         email:
- *           type: string
- *           format: email
- *           example: ada.lovelace@example.com
- *         password:
- *           type: string
- *           format: password
- *           example: Str0ng!Passw0rd
- *     RefreshRequest:
- *       type: object
- *       required: [refreshToken]
- *       properties:
- *         refreshToken:
- *           type: string
- *           description: Current refresh token (rotated on success).
- *     LogoutRequest:
- *       type: object
- *       required: [refreshToken]
- *       properties:
- *         refreshToken:
- *           type: string
- *           description: Refresh token to revoke for this device/session.
  *     CardBrand:
  *       type: string
  *       enum: [VISA, MASTERCARD, AMEX, OTHER]
  *     CardResponse:
  *       type: object
- *       required:
- *         - id
- *         - cardholderName
- *         - last4
- *         - brand
- *         - expiryMonth
- *         - expiryYear
- *         - maskedPan
- *         - createdAt
+ *       required: [id, cardholderName, last4, brand, expiryMonth, expiryYear, maskedPan, createdAt]
  *       properties:
  *         id:
  *           type: string
@@ -208,7 +158,7 @@
  *           type: string
  *         last4:
  *           type: string
- *           pattern: '^\\d{4}$'
+ *           pattern: '^\d{4}$'
  *           example: '4242'
  *         brand:
  *           $ref: '#/components/schemas/CardBrand'
@@ -228,8 +178,12 @@
  *           format: date-time
  *     RegisterCardRequest:
  *       type: object
- *       required: [cardholderName, cardNumber, expiryMonth, expiryYear, cvv]
+ *       required: [userId, cardholderName, cardNumber, expiryMonth, expiryYear, cvv]
  *       properties:
+ *         userId:
+ *           type: string
+ *           format: uuid
+ *           description: Owner user id.
  *         cardholderName:
  *           type: string
  *           minLength: 2
@@ -251,7 +205,7 @@
  *           example: 2030
  *         cvv:
  *           type: string
- *           pattern: '^\\d{3,4}$'
+ *           pattern: '^\d{3,4}$'
  *           description: CVV is used for tokenization only and is never persisted.
  *           example: '123'
  *     CardListResponse:
@@ -269,15 +223,7 @@
  *       enum: [PENDING, APPROVED, REJECTED]
  *     PaymentResponse:
  *       type: object
- *       required:
- *         - id
- *         - status
- *         - amount
- *         - currency
- *         - cardId
- *         - metadata
- *         - createdAt
- *         - updatedAt
+ *       required: [id, status, amount, currency, cardId, metadata, createdAt, updatedAt]
  *       properties:
  *         id:
  *           type: string
@@ -318,8 +264,12 @@
  *           format: date-time
  *     CreatePaymentRequest:
  *       type: object
- *       required: [cardId, amount, currency]
+ *       required: [userId, cardId, amount, currency]
  *       properties:
+ *         userId:
+ *           type: string
+ *           format: uuid
+ *           description: User who owns the card and will own the payment.
  *         cardId:
  *           type: string
  *           format: uuid
@@ -377,80 +327,36 @@
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/ApiError'
- *           example:
- *             error:
- *               code: VALIDATION_ERROR
- *               message: Validation failed
- *               requestId: 6f3e2b1a-4c5d-4e9f-8a1b-2c3d4e5f6a7b
- *               details:
- *                 - field: email
- *                   issue: Invalid email
- *     Unauthorized:
- *       description: Missing, invalid, or expired access token; or invalid credentials / refresh token.
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/ApiError'
- *           example:
- *             error:
- *               code: UNAUTHORIZED
- *               message: Invalid credentials
- *               requestId: 6f3e2b1a-4c5d-4e9f-8a1b-2c3d4e5f6a7b
  *     NotFound:
- *       description: Resource not found or not owned by the authenticated user (IDOR-safe 404).
+ *       description: Resource not found or not owned by the requesting user (IDOR-safe 404).
  *       content:
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/ApiError'
- *           example:
- *             error:
- *               code: NOT_FOUND
- *               message: Payment not found
- *               requestId: 6f3e2b1a-4c5d-4e9f-8a1b-2c3d4e5f6a7b
  *     Conflict:
  *       description: Resource conflict (e.g. email already registered).
  *       content:
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/ApiError'
- *           example:
- *             error:
- *               code: CONFLICT
- *               message: Email already in use
- *               requestId: 6f3e2b1a-4c5d-4e9f-8a1b-2c3d4e5f6a7b
  *     IdempotencyConflict:
  *       description: Same Idempotency-Key reused with a different request body.
  *       content:
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/ApiError'
- *           example:
- *             error:
- *               code: IDEMPOTENCY_CONFLICT
- *               message: Idempotency key conflict
- *               requestId: 6f3e2b1a-4c5d-4e9f-8a1b-2c3d4e5f6a7b
  *     RateLimited:
- *       description: Too many auth attempts from this IP (login/register/refresh limiters).
+ *       description: Too many requests from this IP.
  *       content:
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/ApiError'
- *           example:
- *             error:
- *               code: RATE_LIMITED
- *               message: Too many requests
- *               requestId: 6f3e2b1a-4c5d-4e9f-8a1b-2c3d4e5f6a7b
  *     ProcessorUnavailable:
  *       description: Internal payment processor unreachable or returned an error.
  *       content:
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/ApiError'
- *           example:
- *             error:
- *               code: PROCESSOR_UNAVAILABLE
- *               message: Payment processor unavailable
- *               requestId: 6f3e2b1a-4c5d-4e9f-8a1b-2c3d4e5f6a7b
  *     InternalError:
  *       description: Unexpected server error (no stack trace in response).
  *       content:

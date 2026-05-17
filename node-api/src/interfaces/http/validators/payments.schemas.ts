@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const createPaymentBodySchema = z.object({
+  userId: z.string().uuid(),
   cardId: z.string().uuid(),
   amount: z
     .number()
@@ -23,7 +24,12 @@ export const paymentIdParamSchema = z.object({
 });
 
 export const listPaymentsQuerySchema = z.object({
+  user_id: z.string().uuid(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   cursor: z.string().optional(),
   status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
+});
+
+export const paymentDetailQuerySchema = z.object({
+  user_id: z.string().uuid(),
 });

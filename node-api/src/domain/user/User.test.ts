@@ -4,20 +4,30 @@ import { User } from './User';
 describe('User', () => {
   const now = new Date('2026-01-01T00:00:00.000Z');
 
-  it('registers an active user with email value object and password hash only', () => {
-    const user = User.register({
+  it('creates a user with email value object', () => {
+    const user = User.create({
       id: '11111111-1111-4111-8111-111111111111',
       fullName: 'Ada Lovelace',
       email: Email.create('ada@example.com'),
-      passwordHash: '$2b$12$hashedpasswordvalue',
       now,
     });
 
-    expect(user.isActive).toBe(true);
+    expect(user.fullName).toBe('Ada Lovelace');
     expect(user.email).toBe('ada@example.com');
-    expect(user.passwordHash).toBe('$2b$12$hashedpasswordvalue');
+    expect(user.createdAt).toEqual(now);
+    expect(user).not.toHaveProperty('passwordHash');
     expect(user).not.toHaveProperty('password');
-    expect(user).not.toHaveProperty('plainPassword');
+  });
+
+  it('trims whitespace from fullName on creation', () => {
+    const user = User.create({
+      id: '11111111-1111-4111-8111-111111111111',
+      fullName: '  Ada Lovelace  ',
+      email: Email.create('ada@example.com'),
+      now,
+    });
+
+    expect(user.fullName).toBe('Ada Lovelace');
   });
 
   it('restores a persisted user', () => {
@@ -25,8 +35,6 @@ describe('User', () => {
       id: '11111111-1111-4111-8111-111111111111',
       fullName: 'Ada Lovelace',
       email: Email.create('ada@example.com'),
-      passwordHash: '$2b$12$hashedpasswordvalue',
-      isActive: true,
       createdAt: now,
       updatedAt: now,
     });
