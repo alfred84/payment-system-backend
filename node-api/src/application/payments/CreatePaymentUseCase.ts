@@ -1,7 +1,7 @@
 import { CardNotFoundError } from '../../domain/card/errors';
 import type { CardRepository } from '../../domain/card/CardRepository';
 import { Payment } from '../../domain/payment/Payment';
-import { IdempotencyConflictError } from '../../domain/payment/errors';
+import { IdempotencyConflictError, IdempotencyRaceError } from '../../domain/payment/errors';
 import type { PaymentRepository } from '../../domain/payment/PaymentRepository';
 import type { PaymentProcessorGateway } from '../../domain/payment/PaymentProcessorGateway';
 import { Currency } from '../../domain/shared/value-objects/Currency';
@@ -59,16 +59,13 @@ export class CreatePaymentUseCase {
     });
     const windowStart = new Date(now.getTime() - IDEMPOTENCY_WINDOW_MS);
 
-    const existing = await this.paymentRepository.findByIdempotencyKey(
+    const existing = await this.findExistingPayment(
       input.userId,
       idempotencyKey,
       windowStart,
+      fingerprint,
     );
     if (existing) {
-      const storedFingerprint = readStoredFingerprint(existing.metadata);
-      if (storedFingerprint !== fingerprint) {
-        throw new IdempotencyConflictError();
-      }
       return existing;
     }
 
@@ -88,7 +85,14 @@ export class CreatePaymentUseCase {
       metadata: withPaymentFingerprint(input.metadata ?? {}, fingerprint),
       now,
     });
-    await this.paymentRepository.save(pending);
+    try {
+      await this.paymentRepository.save(pending);
+    } catch (error) {
+      if (error instanceof IdempotencyRaceError) {
+        return this.resolveIdempotentHit(input, fingerprint, windowStart);
+      }
+      throw error;
+    }
 
     try {
       const processorResult = await this.processorGateway.process({
@@ -110,5 +114,43 @@ export class CreatePaymentUseCase {
       }
       throw error;
     }
+  }
+
+  private async resolveIdempotentHit(
+    input: CreatePaymentInput,
+    fingerprint: string,
+    windowStart: Date,
+  ): Promise<PaymentOutput> {
+    const raced = await this.findExistingPayment(
+      input.userId,
+      IdempotencyKey.create(input.idempotencyKey),
+      windowStart,
+      fingerprint,
+    );
+    if (!raced) {
+      throw new IdempotencyRaceError();
+    }
+    return raced;
+  }
+
+  private async findExistingPayment(
+    userId: string,
+    idempotencyKey: IdempotencyKey,
+    windowStart: Date,
+    fingerprint: string,
+  ): Promise<PaymentOutput | null> {
+    const existing = await this.paymentRepository.findByIdempotencyKey(
+      userId,
+      idempotencyKey,
+      windowStart,
+    );
+    if (!existing) {
+      return null;
+    }
+    const storedFingerprint = readStoredFingerprint(existing.metadata);
+    if (storedFingerprint !== fingerprint) {
+      throw new IdempotencyConflictError();
+    }
+    return existing;
   }
 }
