@@ -5,6 +5,8 @@ declare global {
       requestId?: string;
       /** Set by requireIdempotencyKey middleware on payment creation. */
       idempotencyKey?: string;
+      /** Zod-parsed query (Express 5 `req.query` is read-only). */
+      validatedQuery?: unknown;
     }
   }
 }

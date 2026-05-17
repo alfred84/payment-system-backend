@@ -48,7 +48,7 @@ export class CardsController {
 
   list = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { user_id: userId } = req.query as unknown as ListCardsQuery;
+      const { user_id: userId } = req.validatedQuery as ListCardsQuery;
       const cards = await this.container.listUserCards.execute({ userId });
       res.status(200).json({
         data: cards.map((card) => ({
@@ -70,7 +70,7 @@ export class CardsController {
 
   remove = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { user_id: userId } = req.query as unknown as DeleteCardQuery;
+      const { user_id: userId } = req.validatedQuery as DeleteCardQuery;
       await this.container.softDeleteCard.execute({
         userId,
         cardId: req.params.id as string,

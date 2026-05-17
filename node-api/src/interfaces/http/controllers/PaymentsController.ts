@@ -53,7 +53,7 @@ export class PaymentsController {
 
   list = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { user_id: userId, limit, cursor, status } = req.query as unknown as ListPaymentsQuery;
+      const { user_id: userId, limit, cursor, status } = req.validatedQuery as ListPaymentsQuery;
 
       let cursorCreatedAt: Date | undefined;
       let cursorId: string | undefined;
@@ -88,7 +88,7 @@ export class PaymentsController {
 
   detail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { user_id: userId } = req.query as unknown as PaymentDetailQuery;
+      const { user_id: userId } = req.validatedQuery as PaymentDetailQuery;
       const payment = await this.container.getPaymentDetail.execute({
         userId,
         paymentId: req.params.id as string,
