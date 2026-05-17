@@ -1,10 +1,5 @@
 const SENSITIVE_KEYS = new Set([
-  'password',
-  'passwordHash',
   'token',
-  'refreshToken',
-  'accessToken',
-  'authorization',
   'cvv',
   'cardNumber',
   'pan',

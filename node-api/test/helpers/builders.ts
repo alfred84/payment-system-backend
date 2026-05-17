@@ -1,27 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
-const STRONG_PASSWORD = 'Str0ng!Passw0rd';
-
-export interface RegisteredUser {
-  email: string;
-  password: string;
-  fullName: string;
-  accessToken: string;
-  refreshToken: string;
-  userId: string;
-}
-
 /**
- * Build a unique registration payload.
+ * Build a unique user creation payload.
  *
- * @returns Registration body fields.
+ * @returns User body fields.
  */
-export function buildRegisterPayload() {
+export function buildUserPayload() {
   const suffix = randomUUID();
   return {
     fullName: 'Test User',
     email: `user-${suffix}@example.com`,
-    password: STRONG_PASSWORD,
   };
 }
 
@@ -37,5 +25,3 @@ export function buildCardPayload() {
     cvv: '123',
   };
 }
-
-export { STRONG_PASSWORD };

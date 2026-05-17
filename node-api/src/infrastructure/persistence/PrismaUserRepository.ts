@@ -24,6 +24,12 @@ export class PrismaUserRepository implements UserRepository {
   }
 
   /** @inheritdoc */
+  async findAll(): Promise<User[]> {
+    const rows = await this.prisma.user.findMany({ orderBy: { createdAt: 'desc' } });
+    return rows.map((row) => UserMapper.toDomain(row));
+  }
+
+  /** @inheritdoc */
   async save(user: User): Promise<void> {
     const data = UserMapper.toPersistence(user);
     await this.prisma.user.upsert({
@@ -32,8 +38,6 @@ export class PrismaUserRepository implements UserRepository {
       update: {
         fullName: data.fullName,
         email: data.email,
-        passwordHash: data.passwordHash,
-        isActive: data.isActive,
         updatedAt: data.updatedAt,
       },
     });

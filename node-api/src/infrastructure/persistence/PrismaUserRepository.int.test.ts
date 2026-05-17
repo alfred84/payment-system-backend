@@ -15,11 +15,10 @@ describe('PrismaUserRepository (integration)', () => {
   });
 
   it('persists and retrieves a user by email', async () => {
-    const user = User.register({
+    const user = User.create({
       id: '11111111-1111-4111-8111-111111111111',
       fullName: 'Ada Lovelace',
       email: Email.create('ada@example.com'),
-      passwordHash: '$2b$12$hashed',
       now,
     });
 
@@ -33,20 +32,31 @@ describe('PrismaUserRepository (integration)', () => {
     expect(byId?.email).toBe('ada@example.com');
   });
 
+  it('findAll returns all users', async () => {
+    const userA = User.create({
+      id: '11111111-1111-4111-8111-111111111111',
+      fullName: 'Ada Lovelace',
+      email: Email.create('ada@example.com'),
+      now,
+    });
+    await repository.save(userA);
+
+    const users = await repository.findAll();
+    expect(users.length).toBeGreaterThanOrEqual(1);
+  });
+
   it('enforces unique email at the database level', async () => {
     const email = Email.create('race@example.com');
-    const first = User.register({
+    const first = User.create({
       id: '11111111-1111-4111-8111-111111111111',
       fullName: 'First',
       email,
-      passwordHash: '$2b$12$first',
       now,
     });
-    const second = User.register({
+    const second = User.create({
       id: '22222222-2222-4222-8222-222222222222',
       fullName: 'Second',
       email,
-      passwordHash: '$2b$12$second',
       now,
     });
 

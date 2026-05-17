@@ -9,9 +9,6 @@ const envSchema = z.object({
   NODE_API_PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_URL: z.string().url().startsWith('postgresql://'),
   DATABASE_URL_TEST: z.string().url().startsWith('postgresql://').optional(),
-  JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
-  JWT_ISSUER: z.string().min(1).default('payment-system-backend'),
-  JWT_AUDIENCE: z.string().min(1).default('payment-system-api'),
   CORS_ORIGINS: z
     .string()
     .transform((s) => s.split(',').map((o) => o.trim()))

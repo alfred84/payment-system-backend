@@ -2,17 +2,17 @@ import { Router } from 'express';
 
 import type { HttpContainer } from '../types';
 import { PaymentsController } from '../controllers/PaymentsController';
-import { createAuthenticate } from '../middlewares/authenticate';
 import { requireIdempotencyKey } from '../middlewares/requireIdempotencyKey';
 import { validate } from '../middlewares/validate';
 import {
   createPaymentBodySchema,
   listPaymentsQuerySchema,
+  paymentDetailQuerySchema,
   paymentIdParamSchema,
 } from '../validators/payments.schemas';
 
 /**
- * Create payment routes (JWT required).
+ * Create payment routes (no authentication — identity via user_id in body/query).
  *
  * @param container - Application composition root.
  * @returns Express router mounted at `/payments`.
@@ -20,13 +20,6 @@ import {
 export function createPaymentsRouter(container: HttpContainer): Router {
   const router = Router();
   const controller = new PaymentsController(container);
-  const authenticate = createAuthenticate({
-    secret: container.env.JWT_ACCESS_SECRET,
-    issuer: container.env.JWT_ISSUER,
-    audience: container.env.JWT_AUDIENCE,
-  });
-
-  router.use(authenticate);
 
   router.post(
     '/',
@@ -37,7 +30,11 @@ export function createPaymentsRouter(container: HttpContainer): Router {
 
   router.get('/', validate({ query: listPaymentsQuerySchema }), controller.list);
 
-  router.get('/:id', validate({ params: paymentIdParamSchema }), controller.detail);
+  router.get(
+    '/:id',
+    validate({ params: paymentIdParamSchema, query: paymentDetailQuerySchema }),
+    controller.detail,
+  );
 
   return router;
 }

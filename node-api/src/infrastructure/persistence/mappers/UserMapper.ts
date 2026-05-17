@@ -18,15 +18,13 @@ export const UserMapper = {
       id: row.id,
       fullName: row.fullName,
       email: Email.create(row.email),
-      passwordHash: row.passwordHash,
-      isActive: row.isActive,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     });
   },
 
   /**
-   * Convert a domain entity to Prisma create/update input.
+   * Convert a domain entity to Prisma create input.
    *
    * @param user - Domain user.
    * @returns Prisma user write shape.
@@ -36,8 +34,6 @@ export const UserMapper = {
       id: user.id,
       fullName: user.fullName,
       email: user.email,
-      passwordHash: user.passwordHash,
-      isActive: user.isActive,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
