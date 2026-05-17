@@ -20,12 +20,13 @@ COPY node-api/src ./src/
 RUN npx prisma generate
 RUN npm run build
 
-# --- Production stage ---
-FROM node:24-alpine AS production
+# --- Production stage (same glibc base as builder — bcrypt native module) ---
+FROM node:24-slim AS production
 
 WORKDIR /app/node-api
 
-RUN apk add --no-cache openssl
+RUN apt-get update && apt-get install -y --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/node-api/package.json /app/node-api/package-lock.json* ./
 COPY --from=builder /app/node-api/node_modules ./node_modules

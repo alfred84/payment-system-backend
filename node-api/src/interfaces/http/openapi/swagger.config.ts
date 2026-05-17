@@ -1,4 +1,11 @@
+import path from 'node:path';
+
 import swaggerJsdoc from 'swagger-jsdoc';
+
+const routeDocGlobs = [
+  path.join(__dirname, '../routes/*.js'),
+  path.join(__dirname, '../routes/*.ts'),
+];
 
 export const openapiSpec = swaggerJsdoc({
   definition: {
@@ -21,5 +28,5 @@ export const openapiSpec = swaggerJsdoc({
     },
     security: [{ bearerAuth: [] }],
   },
-  apis: ['./src/interfaces/http/routes/*.ts', './src/interfaces/http/controllers/*.ts'],
+  apis: routeDocGlobs,
 });
