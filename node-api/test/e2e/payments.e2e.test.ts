@@ -4,6 +4,11 @@ import nock from 'nock';
 import { loadEnv } from '../../src/shared/config/env';
 import { createTestHttpContext } from '../helpers/httpAgent';
 import { buildCardPayload, buildRegisterPayload } from '../helpers/builders';
+import {
+  isLiveProcessorE2e,
+  mockProcessorApproved,
+  mockProcessorDeclined,
+} from '../helpers/e2eProcessor';
 
 describe('Payments API (e2e)', () => {
   const env = loadEnv();
@@ -18,14 +23,7 @@ describe('Payments API (e2e)', () => {
     const registered = await http.request.post('/api/v1/auth/register').send(payload);
     const authorization = `Bearer ${registered.body.accessToken}`;
 
-    nock(env.PROCESSOR_URL)
-      .post('/process')
-      .times(10)
-      .reply(200, () => ({
-        approved: true,
-        reference: randomUUID(),
-        message: 'Approved',
-      }));
+    mockProcessorApproved(env);
 
     const card = await http.request
       .post('/api/v1/cards')
@@ -88,12 +86,28 @@ describe('Payments API (e2e)', () => {
 
   it('returns REJECTED status when the processor declines', async () => {
     const { authorization, cardId } = await setupUserWithCard();
+
+    if (isLiveProcessorE2e()) {
+      let rejected: { status: number; body: { status: string } } | null = null;
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        const attemptRes = await http.request
+          .post('/api/v1/payments')
+          .set('Authorization', authorization)
+          .set('Idempotency-Key', randomUUID())
+          .send({ cardId, amount: 15, currency: 'USD' });
+        expect(attemptRes.status).toBe(201);
+        if (attemptRes.body.status === 'REJECTED') {
+          rejected = attemptRes;
+          break;
+        }
+      }
+      expect(rejected).not.toBeNull();
+      expect(rejected?.body.status).toBe('REJECTED');
+      return;
+    }
+
     nock.cleanAll();
-    nock(env.PROCESSOR_URL).post('/process').reply(200, {
-      approved: false,
-      reference: randomUUID(),
-      message: 'Declined',
-    });
+    mockProcessorDeclined(env);
 
     const res = await http.request
       .post('/api/v1/payments')
