@@ -57,10 +57,21 @@ export class AppContainer {
     this.createUser = new CreateUserUseCase(userRepository, clock, uuidGenerator);
     this.listUsers = new ListUsersUseCase(userRepository);
     this.getUserById = new GetUserByIdUseCase(userRepository);
-    this.registerCard = new RegisterCardUseCase(cardRepository, processorGateway, clock, uuidGenerator);
+    this.registerCard = new RegisterCardUseCase(
+      cardRepository,
+      processorGateway,
+      clock,
+      uuidGenerator,
+    );
     this.listUserCards = new ListUserCardsUseCase(cardRepository);
     this.softDeleteCard = new SoftDeleteCardUseCase(cardRepository);
-    this.createPayment = new CreatePaymentUseCase(paymentRepository, cardRepository, processorGateway, clock, uuidGenerator);
+    this.createPayment = new CreatePaymentUseCase(
+      paymentRepository,
+      cardRepository,
+      processorGateway,
+      clock,
+      uuidGenerator,
+    );
     this.listPaymentHistory = new ListPaymentHistoryUseCase(paymentRepository);
     this.getPaymentDetail = new GetPaymentDetailUseCase(paymentRepository);
   }

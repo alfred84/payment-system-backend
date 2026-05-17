@@ -45,6 +45,12 @@ export class CreateUserUseCase {
     });
     await this.userRepository.save(user);
 
-    return { id: user.id, fullName: user.fullName, email, createdAt: user.createdAt, updatedAt: user.updatedAt };
+    return {
+      id: user.id,
+      fullName: user.fullName,
+      email,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
   }
 }

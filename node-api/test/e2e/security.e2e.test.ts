@@ -20,9 +20,7 @@ describe('Security (e2e)', () => {
   });
 
   it('does not expose stack traces on 404 responses', async () => {
-    const res = await http.request.get(
-      '/api/v1/users/99999999-9999-4999-8999-999999999999',
-    );
+    const res = await http.request.get('/api/v1/users/99999999-9999-4999-8999-999999999999');
 
     expect(res.status).toBe(404);
     expect(res.body.error).toBeDefined();

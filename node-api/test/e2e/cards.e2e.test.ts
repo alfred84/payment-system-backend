@@ -59,9 +59,7 @@ describe('Cards API (e2e)', () => {
       .send({ ...buildCardPayload(), userId });
     expect(created.status).toBe(201);
 
-    const deleted = await http.request.delete(
-      `/api/v1/cards/${created.body.id}?user_id=${userId}`,
-    );
+    const deleted = await http.request.delete(`/api/v1/cards/${created.body.id}?user_id=${userId}`);
     expect(deleted.status).toBe(204);
 
     const list = await http.request.get(`/api/v1/cards?user_id=${userId}`);

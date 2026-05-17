@@ -55,9 +55,7 @@ describe('Users API (e2e)', () => {
   });
 
   it('returns 404 for unknown user id', async () => {
-    const res = await http.request.get(
-      '/api/v1/users/99999999-9999-4999-8999-999999999999',
-    );
+    const res = await http.request.get('/api/v1/users/99999999-9999-4999-8999-999999999999');
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('NOT_FOUND');
   });

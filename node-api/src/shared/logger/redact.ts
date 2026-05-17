@@ -1,10 +1,4 @@
-const SENSITIVE_KEYS = new Set([
-  'token',
-  'cvv',
-  'cardNumber',
-  'pan',
-  'idempotencyKey',
-]);
+const SENSITIVE_KEYS = new Set(['token', 'cvv', 'cardNumber', 'pan', 'idempotencyKey']);
 
 /**
  * Recursively redact sensitive fields from log payloads.
