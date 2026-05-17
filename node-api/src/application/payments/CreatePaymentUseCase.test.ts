@@ -2,7 +2,7 @@ import { Card } from '../../domain/card/Card';
 import { CardNotFoundError } from '../../domain/card/errors';
 import type { CardRepository } from '../../domain/card/CardRepository';
 import { Payment } from '../../domain/payment/Payment';
-import { IdempotencyConflictError } from '../../domain/payment/errors';
+import { IdempotencyConflictError, IdempotencyRaceError } from '../../domain/payment/errors';
 import type { PaymentRepository } from '../../domain/payment/PaymentRepository';
 import type { PaymentProcessorGateway } from '../../domain/payment/PaymentProcessorGateway';
 import { Currency } from '../../domain/shared/value-objects/Currency';
@@ -183,5 +183,36 @@ describe('CreatePaymentUseCase', () => {
 
     await expect(useCase.execute(baseInput)).rejects.toThrow(ProcessorUnavailableError);
     expect(paymentRepository.update).not.toHaveBeenCalled();
+  });
+
+  it('returns the existing payment when a concurrent insert races on save', async () => {
+    const fingerprint = buildPaymentFingerprint({
+      cardId,
+      amount: 19.99,
+      currency: 'USD',
+    });
+    const existing = Payment.restore({
+      id: paymentId,
+      userId,
+      cardId,
+      amount: 19.99,
+      currency: Currency.create('USD'),
+      status: 'PENDING',
+      idempotencyKey: IdempotencyKey.create(idempotencyKey),
+      processorReference: null,
+      processorMessage: null,
+      description: null,
+      metadata: withPaymentFingerprint({}, fingerprint),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    paymentRepository.save.mockRejectedValueOnce(new IdempotencyRaceError());
+    paymentRepository.findByIdempotencyKey.mockResolvedValueOnce(null).mockResolvedValue(existing);
+
+    const result = await useCase.execute(baseInput);
+
+    expect(result).toBe(existing);
+    expect(processorGateway.process).not.toHaveBeenCalled();
   });
 });

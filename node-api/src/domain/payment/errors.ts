@@ -20,3 +20,10 @@ export class IdempotencyConflictError extends DomainError {
     super('Idempotency key conflict', 'IDEMPOTENCY_CONFLICT');
   }
 }
+
+/** Thrown when a concurrent insert lost the idempotency unique race. */
+export class IdempotencyRaceError extends DomainError {
+  constructor() {
+    super('Concurrent idempotency insert', 'IDEMPOTENCY_RACE');
+  }
+}

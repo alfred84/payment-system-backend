@@ -9,13 +9,24 @@ import {
   getTestDatabaseUrl,
   truncateAllTables,
 } from './helpers/integrationDb';
+import {
+  assertProcessorHealthy,
+  configureLiveProcessorE2eEnv,
+  getLiveProcessorUrl,
+  isLiveProcessorE2e,
+} from './helpers/e2eProcessor';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 dotenv.config({ path: path.resolve(__dirname, '../../.env.example') });
 
-const prisma = createTestPrismaClient();
+configureLiveProcessorE2eEnv();
 
-beforeAll(() => {
+jest.setTimeout(120_000);
+
+const prisma = createTestPrismaClient();
+let liveProcessorHealthVerified = false;
+
+beforeAll(async () => {
   process.env.NODE_ENV = 'test';
   const testDbUrl = getTestDatabaseUrl();
   process.env.DATABASE_URL = testDbUrl;
@@ -24,10 +35,17 @@ beforeAll(() => {
     env: { ...process.env, DATABASE_URL: testDbUrl },
     stdio: 'pipe',
   });
+
+  if (isLiveProcessorE2e() && !liveProcessorHealthVerified) {
+    await assertProcessorHealthy(getLiveProcessorUrl());
+    liveProcessorHealthVerified = true;
+  }
 });
 
 beforeEach(async () => {
-  nock.cleanAll();
+  if (!isLiveProcessorE2e()) {
+    nock.cleanAll();
+  }
   await truncateAllTables(prisma);
 });
 
