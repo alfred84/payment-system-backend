@@ -8,16 +8,6 @@ import { Router } from 'express';
 export function createHealthRouter(): Router {
   const router = Router();
 
-  /**
-   * @openapi
-   * /health:
-   *   get:
-   *     summary: Service health check
-   *     tags: [Health]
-   *     responses:
-   *       '200':
-   *         description: Service is healthy
-   */
   router.get('/health', (_req, res) => {
     res.status(200).json({
       status: 'ok',

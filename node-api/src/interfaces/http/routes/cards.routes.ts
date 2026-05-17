@@ -7,13 +7,6 @@ import { validate } from '../middlewares/validate';
 import { cardIdParamSchema, registerCardBodySchema } from '../validators/cards.schemas';
 
 /**
- * @openapi
- * tags:
- *   - name: Cards
- *     description: Tokenized payment cards
- */
-
-/**
  * Create card routes (JWT required).
  *
  * @param container - Application composition root.
@@ -30,37 +23,10 @@ export function createCardsRouter(container: HttpContainer): Router {
 
   router.use(authenticate);
 
-  /**
-   * @openapi
-   * /cards:
-   *   post:
-   *     tags: [Cards]
-   *     summary: Register a card
-   *     security:
-   *       - bearerAuth: []
-   */
   router.post('/', validate({ body: registerCardBodySchema }), controller.register);
 
-  /**
-   * @openapi
-   * /cards:
-   *   get:
-   *     tags: [Cards]
-   *     summary: List active cards
-   *     security:
-   *       - bearerAuth: []
-   */
   router.get('/', controller.list);
 
-  /**
-   * @openapi
-   * /cards/{id}:
-   *   delete:
-   *     tags: [Cards]
-   *     summary: Soft-delete a card
-   *     security:
-   *       - bearerAuth: []
-   */
   router.delete('/:id', validate({ params: cardIdParamSchema }), controller.remove);
 
   return router;

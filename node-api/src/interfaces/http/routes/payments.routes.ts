@@ -12,13 +12,6 @@ import {
 } from '../validators/payments.schemas';
 
 /**
- * @openapi
- * tags:
- *   - name: Payments
- *     description: Payment creation and history
- */
-
-/**
  * Create payment routes (JWT required).
  *
  * @param container - Application composition root.
@@ -35,22 +28,6 @@ export function createPaymentsRouter(container: HttpContainer): Router {
 
   router.use(authenticate);
 
-  /**
-   * @openapi
-   * /payments:
-   *   post:
-   *     tags: [Payments]
-   *     summary: Create a payment
-   *     security:
-   *       - bearerAuth: []
-   *     parameters:
-   *       - in: header
-   *         name: Idempotency-Key
-   *         required: true
-   *         schema:
-   *           type: string
-   *           format: uuid
-   */
   router.post(
     '/',
     requireIdempotencyKey,
@@ -58,26 +35,8 @@ export function createPaymentsRouter(container: HttpContainer): Router {
     controller.create,
   );
 
-  /**
-   * @openapi
-   * /payments:
-   *   get:
-   *     tags: [Payments]
-   *     summary: List payments
-   *     security:
-   *       - bearerAuth: []
-   */
   router.get('/', validate({ query: listPaymentsQuerySchema }), controller.list);
 
-  /**
-   * @openapi
-   * /payments/{id}:
-   *   get:
-   *     tags: [Payments]
-   *     summary: Get payment detail
-   *     security:
-   *       - bearerAuth: []
-   */
   router.get('/:id', validate({ params: paymentIdParamSchema }), controller.detail);
 
   return router;
