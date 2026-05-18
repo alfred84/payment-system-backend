@@ -29,8 +29,8 @@ export function validate(schemas: ValidateSchemas) {
         req.params = schemas.params.parse(req.params);
       }
       if (schemas.query) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- Zod narrows at runtime
-        req.query = schemas.query.parse(req.query);
+        // Express 5: req.query is read-only — store parsed values separately.
+        req.validatedQuery = schemas.query.parse(req.query);
       }
       if (schemas.headers) {
         const parsedHeaders = schemas.headers.parse(req.headers) as Record<string, string>;

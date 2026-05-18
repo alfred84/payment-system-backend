@@ -3,13 +3,10 @@ declare global {
     interface Request {
       /** Correlation id for logging and error responses. */
       requestId?: string;
-      /** Set by authenticate middleware after JWT verification. */
-      auth?: {
-        userId: string;
-        email: string;
-      };
       /** Set by requireIdempotencyKey middleware on payment creation. */
       idempotencyKey?: string;
+      /** Zod-parsed query (Express 5 `req.query` is read-only). */
+      validatedQuery?: unknown;
     }
   }
 }

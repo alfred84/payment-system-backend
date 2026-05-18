@@ -1,5 +1,4 @@
 import { createTestHttpContext } from '../helpers/httpAgent';
-import { buildRegisterPayload, STRONG_PASSWORD } from '../helpers/builders';
 
 describe('Security (e2e)', () => {
   let http: ReturnType<typeof createTestHttpContext>;
@@ -9,10 +8,9 @@ describe('Security (e2e)', () => {
   });
 
   it('rejects SQL injection patterns in email with 422', async () => {
-    const res = await http.request.post('/api/v1/auth/register').send({
+    const res = await http.request.post('/api/v1/users').send({
       fullName: 'Test User',
       email: "ada' OR 1=1 --@example.com",
-      password: STRONG_PASSWORD,
     });
 
     expect(res.status).toBe(422);
@@ -21,14 +19,10 @@ describe('Security (e2e)', () => {
     expect(res.body.error.stack).toBeUndefined();
   });
 
-  it('does not expose stack traces in error responses', async () => {
-    const payload = buildRegisterPayload();
-    const res = await http.request.post('/api/v1/auth/login').send({
-      email: payload.email,
-      password: 'WrongPass1!',
-    });
+  it('does not expose stack traces on 404 responses', async () => {
+    const res = await http.request.get('/api/v1/users/99999999-9999-4999-8999-999999999999');
 
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(404);
     expect(res.body.error).toBeDefined();
     expect(res.body.stack).toBeUndefined();
     expect(res.body.error.stack).toBeUndefined();

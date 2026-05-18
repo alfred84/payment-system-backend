@@ -1,7 +1,6 @@
-import { AuthenticateUserUseCase } from '../../application/auth/AuthenticateUserUseCase';
-import { LogoutUseCase } from '../../application/auth/LogoutUseCase';
-import { RefreshAccessTokenUseCase } from '../../application/auth/RefreshAccessTokenUseCase';
-import { RegisterUserUseCase } from '../../application/auth/RegisterUserUseCase';
+import { CreateUserUseCase } from '../../application/users/CreateUserUseCase';
+import { GetUserByIdUseCase } from '../../application/users/GetUserByIdUseCase';
+import { ListUsersUseCase } from '../../application/users/ListUsersUseCase';
 import { ListUserCardsUseCase } from '../../application/cards/ListUserCardsUseCase';
 import { RegisterCardUseCase } from '../../application/cards/RegisterCardUseCase';
 import { SoftDeleteCardUseCase } from '../../application/cards/SoftDeleteCardUseCase';
@@ -12,12 +11,9 @@ import type { Env } from '../../shared/config/env';
 import { loadEnv } from '../../shared/config/env';
 import { createLogger } from '../../shared/logger/winstonLogger';
 import type winston from 'winston';
-import { BcryptPasswordHasher } from '../crypto/BcryptPasswordHasher';
-import { JwtTokenSigner } from '../crypto/JwtTokenSigner';
 import { PythonPaymentProcessorClient } from '../http/PythonPaymentProcessorClient';
 import { PrismaCardRepository } from '../persistence/PrismaCardRepository';
 import { PrismaPaymentRepository } from '../persistence/PrismaPaymentRepository';
-import { PrismaRefreshTokenRepository } from '../persistence/PrismaRefreshTokenRepository';
 import { PrismaUserRepository } from '../persistence/PrismaUserRepository';
 import { createPrismaClient } from '../persistence/prismaClient';
 import { SystemClock } from '../system/SystemClock';
@@ -35,17 +31,15 @@ export interface ContainerOptions {
 export class AppContainer {
   readonly env: Env;
   readonly logger: winston.Logger;
-  readonly registerUser: RegisterUserUseCase;
-  readonly authenticateUser: AuthenticateUserUseCase;
-  readonly refreshAccessToken: RefreshAccessTokenUseCase;
-  readonly logout: LogoutUseCase;
+  readonly createUser: CreateUserUseCase;
+  readonly listUsers: ListUsersUseCase;
+  readonly getUserById: GetUserByIdUseCase;
   readonly registerCard: RegisterCardUseCase;
   readonly listUserCards: ListUserCardsUseCase;
   readonly softDeleteCard: SoftDeleteCardUseCase;
   readonly createPayment: CreatePaymentUseCase;
   readonly listPaymentHistory: ListPaymentHistoryUseCase;
   readonly getPaymentDetail: GetPaymentDetailUseCase;
-  readonly tokenSigner: JwtTokenSigner;
 
   constructor(options: ContainerOptions = {}) {
     this.env = options.env ?? loadEnv();
@@ -54,42 +48,15 @@ export class AppContainer {
     const prisma = createPrismaClient(options.databaseUrl ?? this.env.DATABASE_URL);
     const clock = new SystemClock();
     const uuidGenerator = new UuidV4Generator();
-    const passwordHasher = new BcryptPasswordHasher();
-    this.tokenSigner = new JwtTokenSigner({
-      secret: this.env.JWT_ACCESS_SECRET,
-      issuer: this.env.JWT_ISSUER,
-      audience: this.env.JWT_AUDIENCE,
-    });
     const processorGateway = new PythonPaymentProcessorClient(this.env.PROCESSOR_URL);
 
     const userRepository = new PrismaUserRepository(prisma);
-    const refreshTokenRepository = new PrismaRefreshTokenRepository(prisma);
     const cardRepository = new PrismaCardRepository(prisma);
     const paymentRepository = new PrismaPaymentRepository(prisma);
 
-    this.registerUser = new RegisterUserUseCase(
-      userRepository,
-      passwordHasher,
-      clock,
-      uuidGenerator,
-    );
-    this.authenticateUser = new AuthenticateUserUseCase(
-      userRepository,
-      refreshTokenRepository,
-      passwordHasher,
-      this.tokenSigner,
-      clock,
-      uuidGenerator,
-    );
-    this.refreshAccessToken = new RefreshAccessTokenUseCase(
-      userRepository,
-      refreshTokenRepository,
-      passwordHasher,
-      this.tokenSigner,
-      clock,
-      uuidGenerator,
-    );
-    this.logout = new LogoutUseCase(refreshTokenRepository, passwordHasher, clock);
+    this.createUser = new CreateUserUseCase(userRepository, clock, uuidGenerator);
+    this.listUsers = new ListUsersUseCase(userRepository);
+    this.getUserById = new GetUserByIdUseCase(userRepository);
     this.registerCard = new RegisterCardUseCase(
       cardRepository,
       processorGateway,

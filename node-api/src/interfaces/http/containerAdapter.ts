@@ -11,10 +11,9 @@ export function toAppDependencies(container: AppContainer): AppDependencies {
   return {
     env: container.env,
     logger: container.logger,
-    registerUser: container.registerUser,
-    authenticateUser: container.authenticateUser,
-    refreshAccessToken: container.refreshAccessToken,
-    logout: container.logout,
+    createUser: container.createUser,
+    listUsers: container.listUsers,
+    getUserById: container.getUserById,
     registerCard: container.registerCard,
     listUserCards: container.listUserCards,
     softDeleteCard: container.softDeleteCard,

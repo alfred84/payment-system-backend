@@ -1,58 +1,46 @@
-import type { UserRepository } from '../../domain/user/UserRepository';
 import { User } from '../../domain/user/User';
+import { EmailAlreadyInUseError } from '../../domain/user/errors';
+import type { UserRepository } from '../../domain/user/UserRepository';
 import { Email } from '../../domain/shared/value-objects/Email';
-import type { RegisterUserInput } from '../dto/auth.dto';
+import type { CreateUserInput, UserOutput } from '../dto/user.dto';
 import type { Clock } from '../ports/Clock';
-import type { PasswordHasher } from '../ports/PasswordHasher';
 import type { UuidGenerator } from '../ports/UuidGenerator';
-import { EmailAlreadyInUseError } from './errors';
-
-export interface RegisterUserOutput {
-  id: string;
-  fullName: string;
-  email: string;
-  createdAt: Date;
-}
 
 /**
- * Register a new user account.
+ * Create a new user account (no password, no credentials).
  */
-export class RegisterUserUseCase {
+export class CreateUserUseCase {
   constructor(
     private readonly userRepository: UserRepository,
-    private readonly passwordHasher: PasswordHasher,
     private readonly clock: Clock,
     private readonly uuidGenerator: UuidGenerator,
   ) {}
 
   /**
-   * Register a user with a hashed password.
+   * Create a user identified by fullName and email.
    *
-   * @param input - Registration data.
-   * @returns Created user identifiers.
+   * @param input - User creation data.
+   * @returns Created user data.
    * @throws {EmailAlreadyInUseError} When the email is already registered.
    *
    * @example
-   *   const user = await registerUser.execute({
+   *   const user = await createUser.execute({
    *     fullName: 'Ada Lovelace',
    *     email: 'ada@example.com',
-   *     password: 'correct horse battery staple',
    *   });
    */
-  async execute(input: RegisterUserInput): Promise<RegisterUserOutput> {
+  async execute(input: CreateUserInput): Promise<UserOutput> {
     const email = Email.create(input.email);
     const existing = await this.userRepository.findByEmail(email);
     if (existing) {
       throw new EmailAlreadyInUseError();
     }
 
-    const passwordHash = await this.passwordHasher.hash(input.password);
     const now = this.clock.now();
-    const user = User.register({
+    const user = User.create({
       id: this.uuidGenerator.generate(),
       fullName: input.fullName,
       email,
-      passwordHash,
       now,
     });
     await this.userRepository.save(user);
@@ -62,6 +50,7 @@ export class RegisterUserUseCase {
       fullName: user.fullName,
       email,
       createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
     };
   }
 }

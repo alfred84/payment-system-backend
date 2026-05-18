@@ -1,337 +1,270 @@
-# Payment System Backend
+# payment-system-backend
 
-> Production-grade reference implementation for a Clean Architecture payments API.
-> Bilingual documentation: **English (primary)** / **Español (secondary)**.
+Fictional payment system demonstrating Clean Architecture, TDD, and idempotent payments using Node.js, FastAPI, and PostgreSQL.
+
+**No authentication** — identity is resolved by `userId` (UUID) in the URL path, request body, or query parameter (`user_id`).
 
 ---
 
-## English
-
-### Overview
-
-RESTful payment API built with **Node.js / Express / TypeScript** and a **Python / FastAPI**
-payment processor microservice, backed by **PostgreSQL**. The system supports user
-authentication (JWT + rotating refresh tokens), card tokenization, idempotent payments,
-and OWASP-aligned security controls.
-
-### Architecture
+## Architecture
 
 ```
-┌─────────────┐     HTTP (internal)     ┌──────────────────┐
-│   Client    │ ──────────────────────► │    node-api      │
-│  (Postman)  │      /api/v1/*          │  Express + TS    │
-└─────────────┘                         └────────┬─────────┘
-                                                 │
-                    ┌────────────────────────────┼────────────────────────────┐
-                    │                            │                            │
-                    ▼                            ▼                            ▼
-            ┌───────────────┐          ┌─────────────────┐          ┌─────────────────┐
-            │  PostgreSQL   │          │ python-service  │          │  postgres-test  │
-            │   (main DB)   │          │ POST /process   │          │  (tests only)   │
-            └───────────────┘          └─────────────────┘          └─────────────────┘
+                    ┌─────────────────────┐
+                    │   Client / curl     │
+                    └──────────┬──────────┘
+                               │ HTTP
+                    ┌──────────▼──────────┐
+                    │   node-api :3000    │
+                    │  Express + Prisma   │
+                    └──┬──────────────┬───┘
+                       │              │
+              ┌────────▼────┐   ┌─────▼────────────┐
+              │  postgres   │   │ python-service   │
+              │    :5432    │   │  :8000 /process  │
+              └─────────────┘   └──────────────────┘
 ```
-
-### Tech stack
-
-| Component        | Technology              | Version   |
-|------------------|-------------------------|-----------|
-| Node runtime     | Node.js LTS (Krypton)   | 24.x      |
-| API framework    | Express                 | ^5.1.0    |
-| Language         | TypeScript              | ^5.7.0    |
-| ORM / migrations | Prisma                  | ^6.0.0    |
-| Validation       | Zod                     | ^3.24.0   |
-| Python runtime   | Python                  | 3.14      |
-| Python framework | FastAPI                 | ^0.136.0  |
-| Database         | PostgreSQL              | 18        |
-| Containers       | Docker + Compose        | v2        |
-
-### Quick start
-
-```bash
-cp .env.example .env
-# Set JWT_ACCESS_SECRET (min 32 chars), e.g.:
-# openssl rand -hex 32
-
-docker compose up --build
-```
-
-Migrations run automatically when the `node-api` container starts (`prisma migrate deploy`).
-
-**After changing Node API or OpenAPI sources while Docker is already running**, rebuild and
-recreate only the API service (the image runs compiled `dist/`, not live TypeScript):
-
-```bash
-docker compose up -d --build node-api
-```
-
-The optional `docker-compose.override.yml` bind-mount of `node-api/src` does **not** hot-reload
-the running API; it is not used by `node dist/main.js` in the container.
-
-| Service          | URL                               |
-|------------------|-----------------------------------|
-| Node API         | http://localhost:3000             |
-| Health           | http://localhost:3000/health      |
-| Swagger UI       | http://localhost:3000/api/v1/docs |
-| Python processor | http://localhost:9000/health      |
-
-### Environment variables
-
-See [`.env.example`](./.env.example). Required at startup (validated with Zod):
-
-| Variable            | Description                                      |
-|---------------------|--------------------------------------------------|
-| `DATABASE_URL`      | PostgreSQL connection string (main DB)           |
-| `JWT_ACCESS_SECRET` | HS256 signing secret (min 32 characters)         |
-| `PROCESSOR_URL`     | Internal Python service URL (Docker network)     |
-| `CORS_ORIGINS`      | Comma-separated allowed browser origins          |
-
-Optional: `DATABASE_URL_TEST`, `POSTGRES_*`, `PYTHON_SERVICE_PORT`, `PROCESSOR_APPROVAL_SEED`.
-
-### API reference
-
-Interactive OpenAPI 3.0 docs: **http://localhost:3000/api/v1/docs/**
-
-| Resource | URL |
-|----------|-----|
-| Swagger UI | http://localhost:3000/api/v1/docs/ |
-| Raw OpenAPI JSON (Postman / codegen) | http://localhost:3000/api/v1/docs/openapi.json |
-
-The spec is generated at **container/process startup** from JSDoc in
-`node-api/src/interfaces/http/openapi/` (`components.ts` + `paths/*.paths.ts`).
-
-**Using Swagger UI**
-
-1. Call `POST /auth/register` or `POST /auth/login` and copy `accessToken`.
-2. Click **Authorize**, enter `Bearer <accessToken>` (or paste the token if the UI adds the prefix).
-3. For `POST /payments`, set header **Idempotency-Key** (UUID v4) in the operation parameters.
-
-All routes use the `/api/v1` prefix.
-
-| Method | Route              | Auth | Description                    |
-|--------|--------------------|------|--------------------------------|
-| POST   | `/auth/register`   | No   | Create user + tokens           |
-| POST   | `/auth/login`      | No   | Login                          |
-| POST   | `/auth/refresh`    | No   | Rotate refresh token           |
-| POST   | `/auth/logout`     | Yes  | Revoke refresh token           |
-| POST   | `/cards`           | Yes  | Register tokenized card        |
-| GET    | `/cards`           | Yes  | List active cards              |
-| DELETE | `/cards/:id`       | Yes  | Soft-delete own card           |
-| POST   | `/payments`        | Yes  | Create payment (idempotent)    |
-| GET    | `/payments`        | Yes  | List own payments (paginated)  |
-| GET    | `/payments/:id`    | Yes  | Payment detail (own only)    |
-
-### Example requests
-
-Set a base URL and obtain tokens after register/login:
-
-```bash
-export API=http://localhost:3000/api/v1
-
-# Health
-curl -s "$API/../health"   # or http://localhost:3000/health
-
-# Register
-curl -s -X POST "$API/auth/register" \
-  -H 'Content-Type: application/json' \
-  -d '{"fullName":"Ada Lovelace","email":"ada@example.com","password":"Str0ng!Passw0rd"}'
-
-# Login (save accessToken from JSON)
-curl -s -X POST "$API/auth/login" \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"ada@example.com","password":"Str0ng!Passw0rd"}'
-
-export ACCESS_TOKEN="<paste accessToken>"
-export REFRESH_TOKEN="<paste refreshToken>"
-
-# Refresh
-curl -s -X POST "$API/auth/refresh" \
-  -H 'Content-Type: application/json' \
-  -d "{\"refreshToken\":\"$REFRESH_TOKEN\"}"
-
-# Logout
-curl -s -X POST "$API/auth/logout" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d "{\"refreshToken\":\"$REFRESH_TOKEN\"}"
-
-# Register card
-curl -s -X POST "$API/cards" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"cardholderName":"Ada Lovelace","cardNumber":"4242424242424242","expiryMonth":12,"expiryYear":2030,"cvv":"123"}'
-
-export CARD_ID="<paste card id>"
-
-# Create payment (idempotent) — use a new UUID per logical operation
-curl -s -X POST "$API/payments" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "Idempotency-Key: $(uuidgen 2>/dev/null || powershell -Command '[guid]::NewGuid()')" \
-  -H 'Content-Type: application/json' \
-  -d "{\"cardId\":\"$CARD_ID\",\"amount\":19.99,\"currency\":\"USD\",\"description\":\"Monthly subscription\"}"
-
-# List payments
-curl -s "$API/payments?limit=20" -H "Authorization: Bearer $ACCESS_TOKEN"
-
-# Payment detail
-export PAYMENT_ID="<paste payment id>"
-curl -s "$API/payments/$PAYMENT_ID" -H "Authorization: Bearer $ACCESS_TOKEN"
-
-# Delete card
-curl -s -X DELETE "$API/cards/$CARD_ID" -H "Authorization: Bearer $ACCESS_TOKEN"
-```
-
-### Security
-
-See [`SECURITY.md`](./SECURITY.md) for the OWASP control matrix, idempotency policy, logging rules, and known limitations.
-
-### Testing
-
-```bash
-# Node — unit (fast)
-cd node-api && npm run test:unit
-
-# Node — integration (requires postgres-test on localhost:5433)
-cd node-api && npm run test:integration
-
-# Node — e2e with mocked processor (CI path)
-cd node-api && npm run test:e2e
-
-# Node — e2e against live Python processor
-docker compose up -d postgres-test python-service
-cd node-api && npm run test:e2e:live
-
-# Idempotency concurrency check (50 parallel requests → 1 row)
-cd node-api && npm run test:idempotency-concurrency
-
-# Python
-cd python-service && pytest --cov=app --cov-fail-under=75
-```
-
-CI runs lint, tests, Docker builds, and dependency audits on every push to `develop` and PRs to `main`.
-
-### Troubleshooting
-
-| Symptom | Likely cause | Fix |
-|---------|--------------|-----|
-| `Environment validation failed` on start | Missing/invalid `.env` | Copy `.env.example`, set `JWT_ACCESS_SECRET` (≥32 chars) |
-| Swagger UI outdated (missing bodies, old paths) | `node-api` image not rebuilt after code changes | `docker compose up -d --build node-api`, then hard-refresh the browser |
-| `Cannot GET /api/v1/docs` | Trailing slash / stale container | Use **/api/v1/docs/** or check `payment-node-api` is healthy |
-| `502 PROCESSOR_UNAVAILABLE` on payments | Python image stale or down | `docker compose build python-service && docker compose up -d python-service` |
-| Integration tests fail to connect DB | `postgres-test` not running | `docker compose up -d postgres-test` |
-| Port 5433 already in use | Another Postgres instance | Change `POSTGRES_TEST_PORT` in `.env` |
-| Live e2e cannot reach processor | Wrong `PROCESSOR_URL` in `.env` | Live tests force `http://localhost:9000`; ensure port 9000 is mapped |
-
-### Project structure
 
 ```
 payment-system-backend/
-├── node-api/              # Express + TypeScript API (Clean Architecture)
-├── python-service/        # FastAPI payment processor
-├── docker/                # Dockerfiles and entrypoint (migrations on boot)
-├── database/              # Schema reference (DBML)
-├── docker-compose.yml     # Full dev stack
-├── docker-compose.e2e.yml # Optional e2e profile (isolated container names)
-└── .github/workflows/     # CI pipeline
+├── node-api/          # Node.js / Express / TypeScript — main REST API
+├── python-service/    # Python / FastAPI — internal payment processor
+└── docker-compose.yml
 ```
+
+Both services follow Clean Architecture (Domain → Application → Infrastructure → Interface layers).
 
 ---
 
-## Español
+## Technology stack
 
-### Resumen
+| Component | Version |
+|-----------|---------|
+| Node.js | ≥ 24 (LTS) |
+| Express | ^5.1.0 |
+| TypeScript | ^5.7.0 |
+| Prisma | ^6.0.0 |
+| PostgreSQL | 18 (Alpine image) |
+| Python | 3.14 |
+| FastAPI | ^0.136.0 |
+| Pydantic | ^2.10.0 |
 
-API REST de pagos con **Node.js / Express / TypeScript** y un microservicio procesador en
-**Python / FastAPI**, con base de datos **PostgreSQL**. Incluye autenticación JWT con refresh
-rotativo, tokenización de tarjetas, pagos idempotentes y controles alineados con OWASP.
+---
 
-### Inicio rápido
+## Quick start
 
 ```bash
 cp .env.example .env
-# Configurar JWT_ACCESS_SECRET (mínimo 32 caracteres)
-
-docker compose up --build
+docker compose up -d
+curl http://localhost:3000/health
 ```
 
-Las migraciones se aplican al arrancar el contenedor `node-api`.
-
-Si Docker ya está en marcha y modificaste código Node u OpenAPI, reconstruye solo la API:
-
-```bash
-docker compose up -d --build node-api
-```
-
-El contenedor ejecuta `dist/` compilado; el volumen opcional de `node-api/src` en
-`docker-compose.override.yml` **no** recarga la API en caliente.
-
-| Servicio          | URL                                      |
-|-------------------|------------------------------------------|
-| API Node          | http://localhost:3000                    |
-| Verificación      | http://localhost:3000/health             |
-| Documentación API | http://localhost:3000/api/v1/docs        |
-| Procesador Python | http://localhost:9000/health             |
-
-### Variables de entorno
-
-Consulte [`.env.example`](./.env.example). Obligatorias: `DATABASE_URL`, `JWT_ACCESS_SECRET`,
-`PROCESSOR_URL`, `CORS_ORIGINS`.
-
-### Referencia de API
-
-Documentación interactiva OpenAPI: **http://localhost:3000/api/v1/docs/**
-
-| Recurso | URL |
-|---------|-----|
-| Swagger UI | http://localhost:3000/api/v1/docs/ |
-| OpenAPI JSON (Postman) | http://localhost:3000/api/v1/docs/openapi.json |
-
-Fuentes del spec: `node-api/src/interfaces/http/openapi/`. Se genera al **arrancar** el proceso.
-
-**Swagger UI:** tras login/registro, use **Authorize** con `Bearer <accessToken>`. En pagos, indique
-`Idempotency-Key` (UUID v4) en los parámetros de la operación.
-
-Prefijo común: `/api/v1`.
-
-### Ejemplo rápido
-
-```bash
-# Registro
-curl -X POST http://localhost:3000/api/v1/auth/register \
-  -H 'Content-Type: application/json' \
-  -d '{"fullName":"Ada Lovelace","email":"ada@example.com","password":"Str0ng!Passw0rd"}'
-
-# Pago idempotente (sustituir TOKEN, CARD_ID y generar un UUID para Idempotency-Key)
-curl -X POST http://localhost:3000/api/v1/payments \
-  -H "Authorization: Bearer TOKEN" \
-  -H "Idempotency-Key: 8f5b3c2a-1d4e-4a9b-9c3d-2e1f0a9b8c7d" \
-  -H 'Content-Type: application/json' \
-  -d '{"cardId":"CARD_ID","amount":19.99,"currency":"USD"}'
-```
-
-### Seguridad
-
-Ver [`SECURITY.md`](./SECURITY.md) (matriz OWASP, idempotencia, registro de auditoría).
-
-### Pruebas
-
-```bash
-cd node-api && npm run test:unit
-cd node-api && npm run test:e2e
-cd python-service && pytest --cov=app --cov-fail-under=75
-```
-
-### Problemas frecuentes
-
-| Síntoma | Solución |
-|---------|----------|
-| Error de validación de entorno | Revisar `.env` y `JWT_ACCESS_SECRET` |
-| Swagger desactualizado | `docker compose up -d --build node-api` y refrescar el navegador |
-| `Cannot GET /api/v1/docs` | Usar **/api/v1/docs/** o comprobar que `payment-node-api` está healthy |
-| 502 al crear pagos | Reconstruir `python-service`: `docker compose build python-service` |
-| Tests de integración fallan | Levantar `postgres-test`: `docker compose up -d postgres-test` |
+Interactive API docs: **http://localhost:3000/api/v1/docs**
 
 ---
 
-## License
+## Environment variables
 
-Reference implementation for a technical assessment. Use and adapt under your organization's policies.
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NODE_ENV` | Runtime environment | `development` |
+| `NODE_API_PORT` | Port for the Node API | `3000` |
+| `DATABASE_URL` | Postgres connection (main) | see `.env.example` |
+| `DATABASE_URL_TEST` | Postgres connection (tests) | see `.env.example` |
+| `CORS_ORIGINS` | Comma-separated allowed origins | `http://localhost:3000` |
+| `PROCESSOR_URL` | Python processor base URL | `http://python-service:8000` |
+| `LOG_LEVEL` | Winston log level | `info` |
+
+---
+
+## API reference (`/api/v1`)
+
+### Users
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/users` | Create a user (`fullName`, `email`) |
+| `GET` | `/users` | List all users |
+| `GET` | `/users/:id` | Get user by id |
+
+```bash
+curl -X POST http://localhost:3000/api/v1/users \
+  -H 'Content-Type: application/json' \
+  -d '{"fullName":"Ada Lovelace","email":"ada@example.com"}'
+
+curl http://localhost:3000/api/v1/users
+
+curl http://localhost:3000/api/v1/users/11111111-1111-4111-8111-111111111111
+```
+
+### Cards
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/cards` | Register a card (`userId` in body) |
+| `GET` | `/cards?user_id=:id` | List active cards for a user |
+| `DELETE` | `/cards/:id?user_id=:id` | Soft-delete a card |
+
+```bash
+curl -X POST http://localhost:3000/api/v1/cards \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "userId":"11111111-1111-4111-8111-111111111111",
+    "cardholderName":"Ada Lovelace",
+    "cardNumber":"4242424242424242",
+    "expiryMonth":12,
+    "expiryYear":2030,
+    "cvv":"123"
+  }'
+
+curl "http://localhost:3000/api/v1/cards?user_id=11111111-1111-4111-8111-111111111111"
+
+curl -X DELETE \
+  "http://localhost:3000/api/v1/cards/22222222-2222-4222-8222-222222222222?user_id=11111111-1111-4111-8111-111111111111"
+```
+
+### Payments
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/payments` | Create a payment — requires `Idempotency-Key` header |
+| `GET` | `/payments?user_id=:id` | List payment history (cursor pagination) |
+| `GET` | `/payments/:id?user_id=:id` | Get payment detail |
+
+```bash
+curl -X POST http://localhost:3000/api/v1/payments \
+  -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: 8f5b3c2a-1d4e-4a9b-9c3d-2e1f0a9b8c7d' \
+  -d '{
+    "userId":"11111111-1111-4111-8111-111111111111",
+    "cardId":"22222222-2222-4222-8222-222222222222",
+    "amount":19.99,
+    "currency":"USD",
+    "description":"Monthly subscription"
+  }'
+
+curl "http://localhost:3000/api/v1/payments?user_id=11111111-1111-4111-8111-111111111111&limit=20"
+
+curl "http://localhost:3000/api/v1/payments/33333333-3333-4333-8333-333333333333?user_id=11111111-1111-4111-8111-111111111111"
+```
+
+---
+
+## Testing
+
+```bash
+cd node-api
+npm run test:unit
+npm run test:integration   # requires postgres-test (docker compose)
+npm run test:e2e         # requires full stack
+```
+
+---
+
+## Security
+
+See [SECURITY.md](./SECURITY.md). Summary:
+
+- **Helmet.js** — secure HTTP headers
+- **Rate limiting** — 100 req/IP/15 min
+- **Zod validation** — all inputs validated before processing
+- **Parameterized queries** — via Prisma (never `$queryRawUnsafe`)
+- **No stack traces** in error responses
+- **PAN & CVV never stored** — only `last4`, `brand`, and an opaque token
+- **Resource ownership** — `card.userId` / `payment.userId` validated on every request
+- **IDOR-safe 404** — cross-user access returns 404, not 403
+- **No authentication** — deliberate scope limitation (documented in SECURITY.md)
+
+---
+
+# payment-system-backend (Español)
+
+Sistema de pagos ficticio con **Clean Architecture**, **TDD** e idempotencia en cobros.
+
+**Sin autenticación** — el usuario se identifica por `userId` (UUID) en la ruta, el cuerpo o el query `user_id`.
+
+---
+
+## Arquitectura
+
+Ver diagrama ASCII en la sección en inglés. Estructura:
+
+- `node-api/` — API REST principal (Node.js / Express / TypeScript / Prisma)
+- `python-service/` — procesador interno de pagos (Python / FastAPI)
+- `docker-compose.yml` — orquestación local
+
+---
+
+## Arranque rápido
+
+```bash
+cp .env.example .env
+docker compose up -d
+curl http://localhost:3000/health
+```
+
+Documentación interactiva: **http://localhost:3000/api/v1/docs**
+
+---
+
+## Variables de entorno
+
+| Variable | Descripción |
+|----------|-------------|
+| `NODE_ENV` | Entorno de ejecución |
+| `NODE_API_PORT` | Puerto de la API Node (default `3000`) |
+| `DATABASE_URL` | Conexión PostgreSQL principal |
+| `DATABASE_URL_TEST` | Conexión PostgreSQL para tests |
+| `CORS_ORIGINS` | Orígenes CORS permitidos (separados por coma) |
+| `PROCESSOR_URL` | URL del microservicio Python |
+| `LOG_LEVEL` | Nivel de log Winston |
+
+Valores por defecto en `.env.example`.
+
+---
+
+## API (`/api/v1`)
+
+Ningún endpoint requiere `Authorization`.
+
+### Usuarios
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `POST` | `/users` | Crear usuario |
+| `GET` | `/users` | Listar usuarios |
+| `GET` | `/users/:id` | Obtener usuario |
+
+### Tarjetas
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `POST` | `/cards` | Registrar tarjeta (`userId` en body) |
+| `GET` | `/cards?user_id=:id` | Listar tarjetas activas |
+| `DELETE` | `/cards/:id?user_id=:id` | Baja lógica de tarjeta |
+
+### Pagos
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `POST` | `/payments` | Crear pago (header `Idempotency-Key` obligatorio) |
+| `GET` | `/payments?user_id=:id` | Historial paginado |
+| `GET` | `/payments/:id?user_id=:id` | Detalle de pago |
+
+Ejemplos `curl` completos en la sección en inglés.
+
+---
+
+## Pruebas
+
+```bash
+cd node-api
+npm run test:unit
+npm run test:integration
+npm run test:e2e
+```
+
+---
+
+## Seguridad
+
+Ver [SECURITY.md](./SECURITY.md). La API es pública por diseño del enunciado; los controles aplicables son validación de entrada, no almacenar PAN/CVV, idempotencia, rate limiting y validación de pertenencia recurso↔usuario (404 ante acceso cruzado).

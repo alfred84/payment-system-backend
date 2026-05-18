@@ -1,7 +1,6 @@
-import type { AuthenticateUserUseCase } from '../../application/auth/AuthenticateUserUseCase';
-import type { LogoutUseCase } from '../../application/auth/LogoutUseCase';
-import type { RefreshAccessTokenUseCase } from '../../application/auth/RefreshAccessTokenUseCase';
-import type { RegisterUserUseCase } from '../../application/auth/RegisterUserUseCase';
+import type { CreateUserUseCase } from '../../application/users/CreateUserUseCase';
+import type { GetUserByIdUseCase } from '../../application/users/GetUserByIdUseCase';
+import type { ListUsersUseCase } from '../../application/users/ListUsersUseCase';
 import type { ListUserCardsUseCase } from '../../application/cards/ListUserCardsUseCase';
 import type { RegisterCardUseCase } from '../../application/cards/RegisterCardUseCase';
 import type { SoftDeleteCardUseCase } from '../../application/cards/SoftDeleteCardUseCase';
@@ -12,15 +11,11 @@ import type { ListPaymentHistoryUseCase } from '../../application/payments/ListP
 /** Dependencies required by HTTP controllers and routes. */
 export interface HttpContainer {
   env: {
-    JWT_ACCESS_SECRET: string;
-    JWT_ISSUER: string;
-    JWT_AUDIENCE: string;
     CORS_ORIGINS: string[];
   };
-  registerUser: RegisterUserUseCase;
-  authenticateUser: AuthenticateUserUseCase;
-  refreshAccessToken: RefreshAccessTokenUseCase;
-  logout: LogoutUseCase;
+  createUser: CreateUserUseCase;
+  listUsers: ListUsersUseCase;
+  getUserById: GetUserByIdUseCase;
   registerCard: RegisterCardUseCase;
   listUserCards: ListUserCardsUseCase;
   softDeleteCard: SoftDeleteCardUseCase;

@@ -6,12 +6,11 @@
  *     summary: Create a payment (idempotent)
  *     description: |
  *       Charges a registered card through the internal processor. **Idempotency-Key** (UUID v4) is mandatory.
+ *       `userId` in the body identifies the payer and validates card ownership.
  *
  *       - Processor **approval** → `status: APPROVED` (HTTP 201).
  *       - Processor **decline** → `status: REJECTED` (HTTP 201 — resource created, not a transport error).
  *       - Processor outage → `502 PROCESSOR_UNAVAILABLE`.
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - $ref: '#/components/parameters/IdempotencyKeyHeader'
  *     requestBody:
@@ -23,6 +22,7 @@
  *           examples:
  *             subscription:
  *               value:
+ *                 userId: 11111111-1111-4111-8111-111111111111
  *                 cardId: 22222222-2222-4222-8222-222222222222
  *                 amount: 19.99
  *                 currency: USD
@@ -34,43 +34,12 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/PaymentResponse'
- *             examples:
- *               approved:
- *                 summary: Approved payment
- *                 value:
- *                   id: 33333333-3333-4333-8333-333333333333
- *                   status: APPROVED
- *                   amount: 19.99
- *                   currency: USD
- *                   cardId: 22222222-2222-4222-8222-222222222222
- *                   processorReference: 44444444-4444-4444-8444-444444444444
- *                   processorMessage: Approved
- *                   description: Monthly subscription
- *                   metadata: {}
- *                   createdAt: '2026-05-16T12:00:00.000Z'
- *                   updatedAt: '2026-05-16T12:00:00.000Z'
- *               rejected:
- *                 summary: Declined payment
- *                 value:
- *                   id: 33333333-3333-4333-8333-333333333333
- *                   status: REJECTED
- *                   amount: 19.99
- *                   currency: USD
- *                   cardId: 22222222-2222-4222-8222-222222222222
- *                   processorReference: null
- *                   processorMessage: Declined
- *                   description: Monthly subscription
- *                   metadata: {}
- *                   createdAt: '2026-05-16T12:00:00.000Z'
- *                   updatedAt: '2026-05-16T12:00:00.000Z'
  *       '400':
  *         description: Missing or invalid Idempotency-Key header.
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ApiError'
- *       '401':
- *         $ref: '#/components/responses/Unauthorized'
  *       '404':
  *         description: Card not found or not owned by user.
  *         content:
@@ -85,13 +54,12 @@
  *         $ref: '#/components/responses/ProcessorUnavailable'
  *   get:
  *     tags: [Payments]
- *     summary: List payment history (keyset pagination)
+ *     summary: List payment history for a user (keyset pagination)
  *     description: |
- *       Returns the authenticated user's payments ordered by `createdAt` descending.
+ *       Returns the user's payments ordered by `createdAt` descending.
  *       Use `nextCursor` from the response as the `cursor` query parameter for the next page.
- *     security:
- *       - bearerAuth: []
  *     parameters:
+ *       - $ref: '#/components/parameters/UserIdQuery'
  *       - $ref: '#/components/parameters/PaymentsLimitQuery'
  *       - $ref: '#/components/parameters/PaymentsCursorQuery'
  *       - $ref: '#/components/parameters/PaymentsStatusQuery'
@@ -102,8 +70,6 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/PaymentListResponse'
- *       '401':
- *         $ref: '#/components/responses/Unauthorized'
  *       '422':
  *         $ref: '#/components/responses/ValidationError'
  *
@@ -112,12 +78,11 @@
  *     tags: [Payments]
  *     summary: Get payment detail
  *     description: |
- *       Returns a single payment owned by the authenticated user.
- *       Cross-user access returns `404 NOT_FOUND` (same as missing id).
- *     security:
- *       - bearerAuth: []
+ *       Returns a single payment. `user_id` query parameter validates ownership —
+ *       cross-user access returns `404 NOT_FOUND` (same as missing id).
  *     parameters:
  *       - $ref: '#/components/parameters/PaymentIdPath'
+ *       - $ref: '#/components/parameters/UserIdQuery'
  *     responses:
  *       '200':
  *         description: Payment detail.
@@ -125,8 +90,6 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/PaymentResponse'
- *       '401':
- *         $ref: '#/components/responses/Unauthorized'
  *       '404':
  *         $ref: '#/components/responses/NotFound'
  *       '422':

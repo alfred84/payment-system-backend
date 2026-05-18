@@ -32,6 +32,6 @@ export function createTestPrismaClient(): PrismaClient {
  */
 export async function truncateAllTables(prisma: PrismaClient): Promise<void> {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE payment_audit_log, payments, cards, refresh_tokens, users RESTART IDENTITY CASCADE',
+    'TRUNCATE payment_audit_log, payments, cards, users RESTART IDENTITY CASCADE',
   );
 }

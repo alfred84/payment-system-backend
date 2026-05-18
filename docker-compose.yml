@@ -65,6 +65,7 @@ services:
       NODE_API_PORT: ${NODE_API_PORT:-3000}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-payments}
       DATABASE_URL_TEST: postgresql://${POSTGRES_TEST_USER:-postgres}:${POSTGRES_TEST_PASSWORD:-postgres}@postgres-test:5432/${POSTGRES_TEST_DB:-payments_test}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
       PROCESSOR_URL: http://python-service:8000
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev-secret-replace-with-openssl-rand-hex-32-chars-min}
       JWT_ISSUER: ${JWT_ISSUER:-payment-system-backend}

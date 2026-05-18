@@ -15,33 +15,11 @@ function rateLimitHandler(_req: Request, res: Response): void {
   });
 }
 
-/** Register: 10 requests per IP per 15 minutes. */
-export function createRegisterLimiter() {
+/** General API: 100 requests per IP per 15 minutes. */
+export function createApiLimiter() {
   return rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 10,
-    standardHeaders: true,
-    legacyHeaders: false,
-    handler: rateLimitHandler,
-  });
-}
-
-/** Login: 5 requests per IP per 15 minutes (OWASP A07). */
-export function createLoginLimiter() {
-  return rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 5,
-    standardHeaders: true,
-    legacyHeaders: false,
-    handler: rateLimitHandler,
-  });
-}
-
-/** Refresh: 30 requests per IP per 15 minutes. */
-export function createRefreshLimiter() {
-  return rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 30,
+    max: 100,
     standardHeaders: true,
     legacyHeaders: false,
     handler: rateLimitHandler,

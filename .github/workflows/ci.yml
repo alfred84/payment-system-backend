@@ -11,7 +11,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  JWT_ACCESS_SECRET: ci-test-jwt-secret-minimum-32-characters-long
   CORS_ORIGINS: http://localhost:3000
   PROCESSOR_URL: http://localhost:9999
   NODE_ENV: test

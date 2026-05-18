@@ -21,11 +21,10 @@ describe('PrismaPaymentRepository (integration)', () => {
 
   beforeEach(async () => {
     await userRepository.save(
-      User.register({
+      User.create({
         id: userId,
         fullName: 'Ada Lovelace',
         email: Email.create('ada@example.com'),
-        passwordHash: '$2b$12$hashed',
         now,
       }),
     );
