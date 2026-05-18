@@ -78,12 +78,16 @@ the running API; it is not used by `node dist/main.js` in the container.
 
 See [`.env.example`](./.env.example). Required at startup (validated with Zod):
 
-| Variable            | Description                                      |
-|---------------------|--------------------------------------------------|
-| `DATABASE_URL`      | PostgreSQL connection string (main DB)           |
-| `JWT_ACCESS_SECRET` | HS256 signing secret (min 32 characters)         |
-| `PROCESSOR_URL`     | Internal Python service URL (Docker network)     |
-| `CORS_ORIGINS`      | Comma-separated allowed browser origins          |
+| Variable            | Description                                                       |
+|---------------------|-------------------------------------------------------------------|
+| `DATABASE_URL`      | PostgreSQL connection string (main DB)                            |
+| `JWT_ACCESS_SECRET` | HS256 signing secret (min 32 chars); access tokens expire in **15 min** |
+| `JWT_ISSUER`        | JWT `iss` claim (default: `payment-system-backend`)               |
+| `JWT_AUDIENCE`      | JWT `aud` claim (default: `payment-system-api`)                   |
+| `PROCESSOR_URL`     | Internal Python service URL (Docker network)                      |
+| `CORS_ORIGINS`      | Comma-separated allowed browser origins                           |
+
+Refresh tokens expire in **7 days** and are rotated on every `/auth/refresh` call.
 
 Optional: `DATABASE_URL_TEST`, `POSTGRES_*`, `PYTHON_SERVICE_PORT`, `PROCESSOR_APPROVAL_SEED`.
 
