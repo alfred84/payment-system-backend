@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process';
 import path from 'node:path';
 
+import dotenv from 'dotenv';
 import nock from 'nock';
 
 import {
@@ -8,6 +9,9 @@ import {
   getTestDatabaseUrl,
   truncateAllTables,
 } from './helpers/integrationDb';
+
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env.example') });
 
 const prisma = createTestPrismaClient();
 
